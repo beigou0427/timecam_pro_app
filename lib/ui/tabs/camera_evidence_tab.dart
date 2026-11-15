@@ -341,12 +341,16 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                             ),
                           ),
                           onPressed: () async {
+                            final NavigatorState sheetNav =
+                                Navigator.of(sheetContext);
+                            final ScaffoldMessengerState messenger =
+                                ScaffoldMessenger.of(context);
                             await Clipboard.setData(
                               ClipboardData(text: smsBody),
                             );
                             if (!mounted) return;
-                            Navigator.of(sheetContext).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            sheetNav.pop();
+                            messenger.showSnackBar(
                               SnackBar(
                                 backgroundColor: const Color(0xFF10B981),
                                 content: Text(
