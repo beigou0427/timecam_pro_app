@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/native_hardware_bridge.dart';
 import '../../core/watermark_location_engine.dart';
+import '../widgets/taiwan_plate_quick_pad.dart';
 
 /// 預設台灣主要都會區與外勤巡檢 GPS 定位點模型
 @immutable
@@ -262,6 +263,27 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
         ),
       );
     }
+  }
+
+
+  void _openPlateQuickPad() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) {
+        return TaiwanPlateQuickPad(
+          isZh: widget.isZh,
+          initialValue: _noteController.text,
+          onApplyNote: (String newNote) {
+            setState(() {
+              _noteController.text = newNote;
+            });
+          },
+        );
+      },
+    );
   }
 
   void _show110QuickReportSheet() {
@@ -830,7 +852,16 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                   onChanged: (_) => setState(() {}),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
+              IconButton(
+                key: const Key('open_plate_quick_pad_btn'),
+                tooltip: widget.isZh ? '車牌單手快選' : 'Quick Plate Pad',
+                onPressed: _openPlateQuickPad,
+                icon: const Icon(
+                  Icons.dialpad_rounded,
+                  color: Color(0xFFF59E0B),
+                ),
+              ),
               IconButton(
                 tooltip: widget.isZh ? '對焦網格開關' : 'Toggle Grid',
                 onPressed: () {

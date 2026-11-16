@@ -5,6 +5,7 @@ import 'package:timecam_pro_app/core/video_compression_engine.dart';
 import 'package:timecam_pro_app/core/watermark_location_engine.dart';
 import 'package:timecam_pro_app/main.dart';
 import 'package:timecam_pro_app/ui/widgets/paywall_sheet.dart';
+import 'package:timecam_pro_app/ui/widgets/taiwan_plate_quick_pad.dart';
 
 void main() {
   test('Core Engines: 20MB bitrate lock, NaN guard, UTC+8 & 7-day limit', () {
@@ -39,6 +40,7 @@ void main() {
       nowUtc: utcTime,
     );
     expect(remHours, equals(120));
+    expect(TaiwanPlateQuickPad.sanitizeTaiwanPlate('rcdO88I'), equals('RCD-0881'));
     expect(
       TaiwanReportRepository.filterPortals(query: 'tainan').length,
       equals(1),
