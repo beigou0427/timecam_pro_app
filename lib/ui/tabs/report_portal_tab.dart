@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/native_hardware_bridge.dart';
 import '../../core/taiwan_report_repository.dart';
-import '../widgets/export_handoff_banner.dart';
-import '../widgets/viral_share_card_sheet.dart';
 
 /// Tab 3：全台 22 縣市通報入口、道交法條模板庫與 7 日時效案件夾
 class ReportPortalTab extends StatefulWidget {
@@ -17,6 +14,8 @@ class ReportPortalTab extends StatefulWidget {
     this.activeHandoff,
     this.onDismissHandoff,
   });
+  final Object? activeHandoff;
+  final VoidCallback? onDismissHandoff;
 
   final bool isZh;
   final bool isProUnlocked;
@@ -24,8 +23,6 @@ class ReportPortalTab extends StatefulWidget {
   final void Function(String caseId, CaseSubmissionStatus nextStatus)
       onUpdateCaseStatus;
   final ValueChanged<String> onRequestPaywall;
-  final ExportHandoffContext? activeHandoff;
-  final VoidCallback? onDismissHandoff;
 
   @override
   State<ReportPortalTab> createState() => _ReportPortalTabState();
@@ -93,7 +90,6 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
     final String city = portal.localizedCityName(isZh: widget.isZh);
 
     await Clipboard.setData(ClipboardData(text: url));
-    await NativeHardwareBridge.openOfficialPortalSafari(url);
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
@@ -105,31 +101,6 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
-    );
-  }
-
-
-  TrafficStatuteTemplate _resolveStatuteByCode(String code) {
-    for (final TrafficStatuteTemplate t
-        in TaiwanReportRepository.statuteTemplates) {
-      if (t.code == code) return t;
-    }
-    return TaiwanReportRepository.statuteTemplates.first;
-  }
-
-  void _openViralShareSheet(EvidenceCaseRecord record) {
-    HapticFeedback.selectionClick();
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext ctx) {
-        return ViralShareCardSheet(
-          isZh: widget.isZh,
-          record: record,
-          statute: _resolveStatuteByCode(record.statuteCode),
-        );
-      },
     );
   }
 
@@ -279,22 +250,8 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          IconButton(
-                            key: Key('share_case_card_btn_${record.id}'),
-                            tooltip: widget.isZh ? '生成社群戰報卡' : 'Viral Share Card',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => _openViralShareSheet(record),
-                            icon: const Icon(
-                              Icons.share_rounded,
-                              color: Color(0xFFF59E0B),
-                              size: 18,
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            key: Key('toggle_case_status_${record.id}'),
+                      OutlinedButton.icon(
+                        key: Key('toggle_case_status_${record.id}'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
                           visualDensity: VisualDensity.compact,
@@ -318,8 +275,6 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
                             ),
                           ),
                         ),
-                      ),
-                        ],
                       ),
                     ],
                   ),
@@ -757,8 +712,6 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
                           ),
                         ),
                       ),
-                        ],
-                      ),
                     ],
                   ),
                 ],
@@ -796,16 +749,6 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          if (widget.activeHandoff != null)
-            ExportHandoffBanner(
-              isZh: widget.isZh,
-              handoff: widget.activeHandoff!,
-              onOpenTrafficPortal: (CityReportPortal p) =>
-                  _openOrCopyPortalUrl(p, isEpa: false),
-              onOpenEpaPortal: (CityReportPortal p) =>
-                  _openOrCopyPortalUrl(p, isEpa: true),
-              onDismiss: widget.onDismissHandoff ?? () {},
-            ),
           _buildEvidenceCaseVault(),
           const SizedBox(height: 12),
           _buildStatuteTemplatesSection(),
