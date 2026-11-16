@@ -157,12 +157,6 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
     );
     setState(() {
       _cases = <EvidenceCaseRecord>[newRecord, ..._cases];
-      _activeHandoff = ExportHandoffBanner.createContext(
-        plateNumber: plateNumber,
-        address: address,
-        outputSizeMB: plan.estimatedOutputMB,
-        clipboardSummary: '$plateNumber | $nowFormatted | $address',
-      );
       _currentTabIndex = 2;
       _duoRightPaneIndex = 1;
     });
