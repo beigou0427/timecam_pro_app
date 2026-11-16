@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -101,7 +103,15 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
   );
   Timer? _clockTimer;
   DateTime _now = DateTime.now();
+  final GlobalKey _viewfinderBoundaryKey = GlobalKey();
   int _selectedSpotIndex = 0;
+  bool _useLiveDeviceGps = false;
+  bool _isSyncingGps = false;
+  String? _liveCity;
+  String? _liveStreet;
+  double? _liveLat;
+  double? _liveLng;
+  double? _liveAlt;
   bool _isVideoMode = true;
   bool _isRecording = false;
   int _recordingSeconds = 0;
@@ -133,18 +143,81 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
 
   WatermarkSnapshot _currentSnapshot() {
     final PresetGpsSpot spot = CameraEvidenceTab.presetSpots[_selectedSpotIndex];
+    final String city = (_useLiveDeviceGps && _liveCity != null)
+        ? _liveCity!
+        : (widget.isZh ? spot.cityZh : spot.cityEn);
+    final String street = (_useLiveDeviceGps && _liveStreet != null)
+        ? _liveStreet!
+        : (widget.isZh ? spot.streetZh : spot.streetEn);
     return WatermarkLocationEngine.createSnapshot(
       timestamp: _now,
-      cityAndDistrict: widget.isZh ? spot.cityZh : spot.cityEn,
-      streetAddress: widget.isZh ? spot.streetZh : spot.streetEn,
-      latitude: spot.latitude,
-      longitude: spot.longitude,
-      altitudeMeters: spot.altitude,
+      cityAndDistrict: city,
+      streetAddress: street,
+      latitude: (_useLiveDeviceGps && _liveLat != null) ? _liveLat! : spot.latitude,
+      longitude: (_useLiveDeviceGps && _liveLng != null) ? _liveLng! : spot.longitude,
+      altitudeMeters: (_useLiveDeviceGps && _liveAlt != null) ? _liveAlt! : spot.altitude,
       plateOrProjectNote: _noteController.text,
       isTimeVerified: true,
       isProUnlocked: widget.isProUnlocked,
       isZh: widget.isZh,
     );
+  }
+
+  Future<void> _syncRealDeviceGps() async {
+    if (_isSyncingGps) return;
+    HapticFeedback.mediumImpact();
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _isSyncingGps = true;
+    });
+    final Map<String, dynamic>? gps =
+        await NativeHardwareBridge.fetchLiveGpsAddress(
+      isTestMode: !widget.enableLiveClock,
+    );
+    if (!mounted) return;
+    setState(() {
+      _isSyncingGps = false;
+      if (gps != null) {
+        _useLiveDeviceGps = true;
+        _liveCity = gps['city']?.toString();
+        _liveStreet = gps['street']?.toString();
+        _liveLat = (gps['latitude'] as num?)?.toDouble();
+        _liveLng = (gps['longitude'] as num?)?.toDouble();
+        _liveAlt = (gps['altitude'] as num?)?.toDouble();
+      }
+    });
+    messenger.showSnackBar(
+      SnackBar(
+        backgroundColor:
+            gps != null ? const Color(0xFF10B981) : const Color(0xFF0284C7),
+        content: Text(
+          gps != null
+              ? (widget.isZh
+                  ? '🛰️ 已鎖定真實 iPhone GPS 座標與台灣街道地址！'
+                  : '🛰️ Locked real iPhone GPS coordinates & street address!')
+              : (widget.isZh
+                  ? '📍 目前為模擬器/離線環境，已使用高精度預設巡檢座標'
+                  : '📍 Using preset inspection coordinates in simulator/offline mode'),
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _captureAndSaveWatermarkImage() async {
+    if (!widget.enableLiveClock) return;
+    try {
+      final RenderRepaintBoundary? boundary = _viewfinderBoundaryKey
+          .currentContext
+          ?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return;
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
+      await NativeHardwareBridge.saveWatermarkPhotoBytes(pngBytes);
+    } catch (_) {}
   }
   void _handleTriggerCapture() {
     HapticFeedback.heavyImpact();
@@ -155,6 +228,7 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
           _isRecording = false;
           _recordingSeconds = 0;
           widget.onCaptureEvidence(snap);
+      _captureAndSaveWatermarkImage();
         } else {
           _isRecording = true;
           _recordingSeconds = 0;
@@ -175,6 +249,7 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
       }
     } else {
       widget.onCaptureEvidence(snap);
+      _captureAndSaveWatermarkImage();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: const Color(0xFF0284C7),
@@ -572,7 +647,34 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: List<Widget>.generate(
+                      children: <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ActionChip(
+                            key: const Key('live_gps_sync_btn'),
+                            backgroundColor: _useLiveDeviceGps
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFF0284C7),
+                            visualDensity: VisualDensity.compact,
+                            avatar: Icon(
+                              _isSyncingGps
+                                  ? Icons.sync_rounded
+                                  : Icons.my_location_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                            label: Text(
+                              widget.isZh ? '真機GPS定位' : 'Live GPS',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            onPressed: _syncRealDeviceGps,
+                          ),
+                        ),
+                        ...List<Widget>.generate(
                         CameraEvidenceTab.presetSpots.length,
                         (int idx) {
                           final PresetGpsSpot spot =
@@ -598,6 +700,7 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                               onSelected: (_) {
                                 HapticFeedback.selectionClick();
                                 setState(() {
+                                  _useLiveDeviceGps = false;
                                   _selectedSpotIndex = idx;
                                 });
                               },
@@ -605,6 +708,7 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                           );
                         },
                       ),
+                      ],
                     ),
                   ),
                 ),
@@ -901,7 +1005,10 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          _buildViewfinderArea(snap),
+          RepaintBoundary(
+            key: _viewfinderBoundaryKey,
+            child: _buildViewfinderArea(snap),
+          ),
           const SizedBox(height: 12),
           _buildThumbControlZone(),
         ],

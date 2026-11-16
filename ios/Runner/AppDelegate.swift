@@ -43,6 +43,13 @@ import SafariServices
         let args = call.arguments as? [String: Any]
         let urlStr = args?["url"] as? String ?? "https://www.npa.gov.tw/"
         self.handleOpenSafari(urlStr: urlStr, result: result)
+      case "saveWatermarkPhotoBytes":
+        if let args = call.arguments as? [String: Any],
+           let typedData = args["pngBytes"] as? FlutterStandardTypedData {
+          self.handleSavePhotoBytes(data: typedData.data, result: result)
+        } else {
+          result(false)
+        }
       case "launchNativeSms":
         let args = call.arguments as? [String: Any]
         let uriStr = args?["uri"] as? String ?? "sms:110"
@@ -231,6 +238,29 @@ import SafariServices
     safariVC.preferredControlTintColor = UIColor(red: 245/255, green: 158/255, blue: 11/255, alpha: 1.0)
     rootVC.present(safariVC, animated: true)
     result(true)
+  }
+
+
+  private func handleSavePhotoBytes(data: Data, result: @escaping FlutterResult) {
+    guard let image = UIImage(data: data) else {
+      result(false)
+      return
+    }
+    PHPhotoLibrary.requestAuthorization { status in
+      if status == .authorized || status == .limited {
+        PHPhotoLibrary.shared().performChanges({
+          PHAssetChangeRequest.creationRequestForAsset(from: image)
+        }) { success, _ in
+          DispatchQueue.main.async {
+            result(success)
+          }
+        }
+      } else {
+        DispatchQueue.main.async {
+          result(false)
+        }
+      }
+    }
   }
 
   // 5. 原生喚起 iOS 簡訊 App 自動帶入 110 專線與報案內容

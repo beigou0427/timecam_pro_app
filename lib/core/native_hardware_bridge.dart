@@ -96,4 +96,21 @@ class NativeHardwareBridge {
       return false;
     }
   }
+
+  /// 將 RepaintBoundary 合成之真實浮水印照片 PNG Bytes 存入 iPhone 系統相簿
+  static Future<bool> saveWatermarkPhotoBytes(
+    Uint8List pngBytes, {
+    bool isTestMode = false,
+  }) async {
+    if (isTestMode || kIsWeb) return false;
+    try {
+      final bool? saved = await _channel.invokeMethod<bool>(
+        'saveWatermarkPhotoBytes',
+        <String, dynamic>{'pngBytes': pngBytes},
+      );
+      return saved ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 }
