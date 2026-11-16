@@ -1,33 +1,49 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:timecam_pro_app/core/taiwan_report_repository.dart';
+import 'package:timecam_pro_app/core/video_compression_engine.dart';
+import 'package:timecam_pro_app/core/watermark_location_engine.dart';
 import 'package:timecam_pro_app/main.dart';
+import 'package:timecam_pro_app/ui/widgets/paywall_sheet.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('Core Engines: 20MB bitrate lock, NaN guard, UTC+8 & 7-day limit', () {
+    final CompressionPlan validPlan = VideoCompressionEngine.createPlan(
+      sourceSizeMB: 142.8,
+      clipDurationSeconds: 15.0,
+      preset: ReportTargetPreset.trafficPolice20MB,
+    );
+    expect(validPlan.isValid, isTrue);
+    expect(validPlan.estimatedOutputMB, lessThanOrEqualTo(19.0));
+    expect(validPlan.savedPercentage, greaterThan(80.0));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    final CompressionPlan invalidPlan = VideoCompressionEngine.createPlan(
+      sourceSizeMB: double.nan,
+      clipDurationSeconds: 0.0,
+    );
+    expect(invalidPlan.isValid, isFalse);
+    expect(invalidPlan.savedPercentage, equals(0.0));
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    final DateTime utcTime = DateTime.utc(2026, 11, 16, 6, 30, 0);
+    expect(
+      WatermarkLocationEngine.formatTaiwanTimestamp(utcTime),
+      equals('2026/11/16 14:30:00'),
+    );
+    expect(
+      WatermarkLocationEngine.resolve110SmsRecipient('台北市信義區'),
+      equals('0911510914'),
+    );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    final int remHours = TaiwanReportRepository.remainingHoursToReport(
+      capturedAtUtc: utcTime.subtract(const Duration(days: 2)),
+      nowUtc: utcTime,
+    );
+    expect(remHours, equals(120));
+    expect(
+      TaiwanReportRepository.filterPortals(query: 'tainan').length,
+      equals(1),
+    );
   });
-}
 
   testWidgets('UI Flow: Tab navigation, 110 SMS sheet & Bilingual switch',
       (WidgetTester tester) async {
