@@ -303,8 +303,10 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 6,
+                    runSpacing: 6,
                     children: <double>[1.0, 1.5, 2.2].map((double zoom) {
                       final bool active =
                           (_plateZoomScale - zoom).abs() < 0.05;
@@ -491,28 +493,32 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
                     });
                   },
           ),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-            activeTrackColor: const Color(0xFFF59E0B),
-            title: Text(
-              widget.isZh
-                  ? '轉碼時同步烙印時間與地址防偽浮水印'
-                  : 'Burn-in Timestamp & GPS Watermark During Export',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  widget.isZh
+                      ? '轉碼時同步烙印時間與地址防偽浮水印'
+                      : 'Burn-in Timestamp & GPS Watermark During Export',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-            ),
-            value: _burnInWatermark,
-            onChanged: _isCompressing
-                ? null
-                : (bool val) {
-                    setState(() {
-                      _burnInWatermark = val;
-                    });
-                  },
+              Switch.adaptive(
+                activeTrackColor: const Color(0xFFF59E0B),
+                value: _burnInWatermark,
+                onChanged: _isCompressing
+                    ? null
+                    : (bool val) {
+                        setState(() {
+                          _burnInWatermark = val;
+                        });
+                      },
+              ),
+            ],
           ),
         ],
       ),
