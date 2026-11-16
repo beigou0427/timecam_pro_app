@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timecam_pro_app/core/taiwan_report_repository.dart';
+import 'package:timecam_pro_app/core/activation_quota_engine.dart';
 import 'package:timecam_pro_app/core/video_compression_engine.dart';
 import 'package:timecam_pro_app/core/watermark_location_engine.dart';
 import 'package:timecam_pro_app/main.dart';
@@ -41,6 +42,19 @@ void main() {
     );
     expect(remHours, equals(120));
     expect(TaiwanPlateQuickPad.sanitizeTaiwanPlate('rcdO88I'), equals('RCD-0881'));
+    final QuotaStatusSnapshot q1 = ActivationQuotaEngine.evaluateGate(
+      isProUnlocked: false,
+      usedFreeExports: 0,
+      totalSavedMB: 0.0,
+    );
+    expect(q1.decision, equals(ExportGateDecision.allowFreeGoldenPass));
+    final QuotaStatusSnapshot q2 = ActivationQuotaEngine.recordSuccessfulExport(
+      current: q1,
+      sourceSizeMB: 142.8,
+      estimatedOutputMB: 18.6,
+    );
+    expect(q2.decision, equals(ExportGateDecision.interceptWithPaywall));
+    expect(q2.remainingFreeExports, equals(0));
     expect(
       TaiwanReportRepository.filterPortals(query: 'tainan').length,
       equals(1),

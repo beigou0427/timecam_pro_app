@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/native_hardware_bridge.dart';
+import '../../core/activation_quota_engine.dart';
 import '../../core/video_compression_engine.dart';
 
 /// 內建高畫質 4K 行車紀錄與外勤影片樣本模型 (供快速實測與審核員沙盒體驗)
@@ -101,6 +102,8 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
   double _trimDurationSeconds = 15.0;
   double _plateZoomScale = 1.5;
   bool _burnInWatermark = true;
+  int _usedFreeExports = 0;
+  double _totalSavedMB = 0.0;
   bool _isCompressing = false;
   double _compressionProgress = 0.0;
   StreamSubscription<double>? _compressionSub;
@@ -524,18 +527,29 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
       ),
     );
   }
+  QuotaStatusSnapshot _currentQuota() {
+    return ActivationQuotaEngine.evaluateGate(
+      isProUnlocked: widget.isProUnlocked,
+      usedFreeExports: _usedFreeExports,
+      totalSavedMB: _totalSavedMB,
+    );
+  }
+
   void _handleStartExport(CompressionPlan plan) {
     if (_isCompressing) return;
     final SampleSourceVideo video = _activeVideo;
+    final QuotaStatusSnapshot quota = _currentQuota();
 
-    // 黃金付費牆觸發點：若尚未解鎖 Pro，按下匯出瞬間攔截並彈出高轉化 Paywall
-    if (!widget.isProUnlocked) {
+    if (quota.decision == ExportGateDecision.interceptWithPaywall) {
       HapticFeedback.mediumImpact();
-      final String reasonZh =
-          '⚠️ 您的 ${plan.formattedEstimatedSize} 檢舉影片（車號 ${video.plateNumber}，節省 ${plan.savedPercentage.toStringAsFixed(0)}% 容量）已精算就緒！立即解鎖 Pro 即可一鍵壓縮匯出並趕在 7 日期限內送件。';
-      final String reasonEn =
-          '⚠️ Your ${plan.formattedEstimatedSize} evidence clip (Plate ${video.plateNumber}, ${plan.savedPercentage.toStringAsFixed(0)}% saved) is ready! Unlock Pro to export now.';
-      widget.onRequestPaywall(widget.isZh ? reasonZh : reasonEn);
+      final String reason = ActivationQuotaEngine.buildPostAhaPaywallReason(
+        quota: quota,
+        formattedEstimatedSize: plan.formattedEstimatedSize,
+        plateNumber: video.plateNumber,
+        savedPercentage: plan.savedPercentage,
+        isZh: widget.isZh,
+      );
+      widget.onRequestPaywall(reason);
       return;
     }
 
@@ -558,9 +572,17 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
       },
       onDone: () async {
         if (!mounted) return;
+        final QuotaStatusSnapshot updatedQuota =
+            ActivationQuotaEngine.recordSuccessfulExport(
+          current: _currentQuota(),
+          sourceSizeMB: plan.sourceSizeMB,
+          estimatedOutputMB: plan.estimatedOutputMB,
+        );
         setState(() {
           _isCompressing = false;
           _compressionProgress = 1.0;
+          _usedFreeExports = updatedQuota.usedFreeExports;
+          _totalSavedMB = updatedQuota.totalSavedMB;
         });
 
         final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
@@ -737,13 +759,11 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
               label: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  widget.isProUnlocked
-                      ? (widget.isZh
-                          ? '開始智能壓縮匯出 (${plan.formattedEstimatedSize})'
-                          : 'Export Compressed Video (${plan.formattedEstimatedSize})')
-                      : (widget.isZh
-                          ? '匯出 ${plan.formattedEstimatedSize} 檢舉影片 (解鎖 Pro)'
-                          : 'Export ${plan.formattedEstimatedSize} Clip (Unlock Pro)'),
+                  ActivationQuotaEngine.buildCtaButtonLabel(
+                    quota: _currentQuota(),
+                    formattedEstimatedSize: plan.formattedEstimatedSize,
+                    isZh: widget.isZh,
+                  ),
                   style: const TextStyle(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w900,
