@@ -12,7 +12,6 @@ class NativeHardwareBridge {
   static const MethodChannel _channel =
       MethodChannel('com.beigou.timecampro/native');
 
-  /// 呼叫 iPhone 真實 GPS 與 CLGeocoder 台灣中文路名反查
   static Future<Map<String, dynamic>?> fetchLiveGpsAddress({
     bool isTestMode = false,
   }) async {
@@ -29,7 +28,6 @@ class NativeHardwareBridge {
     }
   }
 
-  /// 開啟 iPhone 系統相簿挑選真實 4K / 1080p 影片
   static Future<Map<String, dynamic>?> pickVideoFromPhotos({
     bool isTestMode = false,
   }) async {
@@ -46,7 +44,6 @@ class NativeHardwareBridge {
     }
   }
 
-  /// 呼叫 iOS AVAssetExportSession 真實裁切壓縮影片並存入系統相簿
   static Future<Map<String, dynamic>?> compressAndSaveRealVideo({
     required double trimSeconds,
     bool isTestMode = false,
@@ -67,7 +64,6 @@ class NativeHardwareBridge {
     }
   }
 
-  /// 呼叫原生 SFSafariViewController 直接開啟縣市警局/環保局檢舉網站
   static Future<bool> openOfficialPortalSafari(
     String url, {
     bool isTestMode = false,
@@ -84,7 +80,6 @@ class NativeHardwareBridge {
     }
   }
 
-  /// 呼叫原生 iOS 簡訊 App 自動帶入 110 專線與報案內容
   static Future<bool> launchNativeSms(
     String smsUri, {
     bool isTestMode = false,
@@ -101,7 +96,6 @@ class NativeHardwareBridge {
     }
   }
 
-  /// 將 RepaintBoundary 合成之真實浮水印照片 PNG Bytes 存入 iPhone 系統相簿
   static Future<bool> saveWatermarkPhotoBytes(
     Uint8List pngBytes, {
     bool isTestMode = false,
