@@ -88,4 +88,17 @@ void main() {
 
     expect(find.text('PRO 已解鎖'), findsOneWidget);
   });
+
+  testWidgets('iPhone Duo Dual-Screen Expanded Mode: simultaneous Camera + 20MB Compressor',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const TimeCamProApp(isTestMode: true));
+    expect(find.text('iPhone Duo 雙屏協作'), findsOneWidget);
+    expect(find.byKey(const Key('camera_main_shutter_btn')), findsOneWidget);
+    expect(find.byKey(const Key('compressor_export_cta_btn')), findsOneWidget);
+  });
 }

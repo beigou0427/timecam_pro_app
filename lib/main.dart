@@ -75,6 +75,7 @@ class TimeCamHomeShell extends StatefulWidget {
 
 class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
   int _currentTabIndex = 0;
+  int _duoRightPaneIndex = 0;
   late bool _isZh;
   bool _isProUnlocked = false;
   late List<EvidenceCaseRecord> _cases;
@@ -157,6 +158,7 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
     setState(() {
       _cases = <EvidenceCaseRecord>[newRecord, ..._cases];
       _currentTabIndex = 2;
+      _duoRightPaneIndex = 1;
     });
   }
 
@@ -174,7 +176,7 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
     });
   }
 
-  PreferredSizeWidget _buildTopAppBar() {
+  PreferredSizeWidget _buildTopAppBar({required bool isDuoExpanded}) {
     return AppBar(
       title: Row(
         children: <Widget>[
@@ -203,6 +205,25 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
               ),
             ),
           ),
+          if (isDuoExpanded) ...<Widget>[
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0284C7).withValues(alpha: 0.25),
+                borderRadius: const BorderRadius.all(Radius.circular(6)),
+                border: Border.all(color: const Color(0xFF38BDF8)),
+              ),
+              child: Text(
+                _isZh ? 'iPhone Duo 雙屏協作' : 'iPhone Duo Dual-Pane',
+                style: const TextStyle(
+                  color: Color(0xFF38BDF8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
       actions: <Widget>[
@@ -267,91 +288,168 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final List<Widget> pages = <Widget>[
-      CameraEvidenceTab(
-        isZh: _isZh,
-        isProUnlocked: _isProUnlocked,
-        enableLiveClock: !widget.isTestMode,
-        onCaptureEvidence: _handleCaptureEvidence,
-        onRequestPaywall: _openPaywall,
-      ),
-      VideoCompressorTab(
-        isZh: _isZh,
-        isProUnlocked: _isProUnlocked,
-        isTestMode: widget.isTestMode,
-        onRequestPaywall: _openPaywall,
-        onExportCompleted: _handleExportCompleted,
-      ),
-      ReportPortalTab(
-        isZh: _isZh,
-        isProUnlocked: _isProUnlocked,
-        cases: _cases,
-        onUpdateCaseStatus: _handleUpdateCaseStatus,
-        onRequestPaywall: _openPaywall,
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final bool isWide = constraints.maxWidth >= 600;
-        return Scaffold(
-          appBar: _buildTopAppBar(),
-          body: isWide
-              ? Row(
+  Widget _buildDuoDualScreenBody() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Expanded(
+          flex: 5,
+          child: CameraEvidenceTab(
+            isZh: _isZh,
+            isProUnlocked: _isProUnlocked,
+            enableLiveClock: !widget.isTestMode,
+            onCaptureEvidence: _handleCaptureEvidence,
+            onRequestPaywall: _openPaywall,
+          ),
+        ),
+        Container(
+          width: 16,
+          color: const Color(0xFF090D16),
+          child: Center(
+            child: Container(
+              width: 3,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFF334155),
+                borderRadius: BorderRadius.all(Radius.circular(2)),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 6,
+          child: Column(
+            children: <Widget>[
+              Container(
+                color: const Color(0xFF0F172A),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
                   children: <Widget>[
-                    NavigationRail(
-                      backgroundColor: const Color(0xFF0F172A),
-                      selectedIndex: _currentTabIndex,
-                      onDestinationSelected: (int idx) {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          _currentTabIndex = idx;
-                        });
-                      },
-                      labelType: NavigationRailLabelType.all,
-                      selectedIconTheme:
-                          const IconThemeData(color: Color(0xFFF59E0B)),
-                      selectedLabelTextStyle: const TextStyle(
-                        color: Color(0xFFF59E0B),
-                        fontWeight: FontWeight.w800,
-                      ),
-                      unselectedLabelTextStyle: const TextStyle(
-                        color: Color(0xFF94A3B8),
-                      ),
-                      destinations: <NavigationRailDestination>[
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.camera_alt_outlined),
-                          selectedIcon: const Icon(Icons.camera_alt_rounded),
-                          label: Text(_isZh ? '蒐證相機' : 'Camera'),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.compress_rounded),
-                          selectedIcon: const Icon(Icons.bolt_rounded),
-                          label: Text(_isZh ? '20MB壓縮' : '20MB Compress'),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.policy_outlined),
-                          selectedIcon: const Icon(Icons.policy_rounded),
-                          label: Text(_isZh ? '通報與案件' : 'Portals'),
-                        ),
-                      ],
-                    ),
-                    const VerticalDivider(width: 1, color: Color(0xFF1E293B)),
                     Expanded(
-                      child: IndexedStack(
-                        index: _currentTabIndex,
-                        children: pages,
+                      child: ChoiceChip(
+                        key: const Key('duo_right_compressor_tab'),
+                        label: Center(
+                          child: Text(
+                            _isZh
+                                ? '⚡ 20MB 檢舉影片壓縮器'
+                                : '⚡ 20MB Video Compressor',
+                            style: TextStyle(
+                              color: _duoRightPaneIndex == 0
+                                  ? const Color(0xFF121212)
+                                  : Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                        selected: _duoRightPaneIndex == 0,
+                        selectedColor: const Color(0xFFF59E0B),
+                        backgroundColor: const Color(0xFF1E293B),
+                        onSelected: (_) {
+                          setState(() {
+                            _duoRightPaneIndex = 0;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ChoiceChip(
+                        key: const Key('duo_right_portal_tab'),
+                        label: Center(
+                          child: Text(
+                            _isZh
+                                ? '🏛️ 通報入口與案件庫 (${_cases.length})'
+                                : '🏛️ Portals & Vault (${_cases.length})',
+                            style: TextStyle(
+                              color: _duoRightPaneIndex == 1
+                                  ? const Color(0xFF121212)
+                                  : Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ),
+                        selected: _duoRightPaneIndex == 1,
+                        selectedColor: const Color(0xFFF59E0B),
+                        backgroundColor: const Color(0xFF1E293B),
+                        onSelected: (_) {
+                          setState(() {
+                            _duoRightPaneIndex = 1;
+                          });
+                        },
                       ),
                     ),
                   ],
-                )
+                ),
+              ),
+              Expanded(
+                child: IndexedStack(
+                  index: _duoRightPaneIndex,
+                  children: <Widget>[
+                    VideoCompressorTab(
+                      isZh: _isZh,
+                      isProUnlocked: _isProUnlocked,
+                      isTestMode: widget.isTestMode,
+                      onRequestPaywall: _openPaywall,
+                      onExportCompleted: _handleExportCompleted,
+                    ),
+                    ReportPortalTab(
+                      isZh: _isZh,
+                      isProUnlocked: _isProUnlocked,
+                      cases: _cases,
+                      onUpdateCaseStatus: _handleUpdateCaseStatus,
+                      onRequestPaywall: _openPaywall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool isDuoExpanded = constraints.maxWidth >= 720;
+        final List<Widget> singleScreenPages = <Widget>[
+          CameraEvidenceTab(
+            isZh: _isZh,
+            isProUnlocked: _isProUnlocked,
+            enableLiveClock: !widget.isTestMode,
+            onCaptureEvidence: _handleCaptureEvidence,
+            onRequestPaywall: _openPaywall,
+          ),
+          VideoCompressorTab(
+            isZh: _isZh,
+            isProUnlocked: _isProUnlocked,
+            isTestMode: widget.isTestMode,
+            onRequestPaywall: _openPaywall,
+            onExportCompleted: _handleExportCompleted,
+          ),
+          ReportPortalTab(
+            isZh: _isZh,
+            isProUnlocked: _isProUnlocked,
+            cases: _cases,
+            onUpdateCaseStatus: _handleUpdateCaseStatus,
+            onRequestPaywall: _openPaywall,
+          ),
+        ];
+
+        return Scaffold(
+          appBar: _buildTopAppBar(isDuoExpanded: isDuoExpanded),
+          body: isDuoExpanded
+              ? _buildDuoDualScreenBody()
               : IndexedStack(
                   index: _currentTabIndex,
-                  children: pages,
+                  children: singleScreenPages,
                 ),
-          bottomNavigationBar: isWide
+          bottomNavigationBar: isDuoExpanded
               ? null
               : NavigationBar(
                   backgroundColor: const Color(0xFF0F172A),
