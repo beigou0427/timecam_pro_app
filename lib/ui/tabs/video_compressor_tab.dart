@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/native_hardware_bridge.dart';
 import '../../core/video_compression_engine.dart';
 
 /// 內建高畫質 4K 行車紀錄與外勤影片樣本模型 (供快速實測與審核員沙盒體驗)
@@ -557,6 +558,7 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
         });
 
         final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+        await NativeHardwareBridge.compressAndSaveRealVideo(trimSeconds: plan.clipDurationSeconds, isTestMode: widget.isTestMode);
         final String summary = VideoCompressionEngine.buildClipboardSummary(
           plan: plan,
           timestampText: '2026/11/15 14:30:00',

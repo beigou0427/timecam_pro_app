@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/native_hardware_bridge.dart';
 import '../../core/watermark_location_engine.dart';
 
 /// 預設台灣主要都會區與外勤巡檢 GPS 定位點模型
@@ -348,6 +349,8 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                             await Clipboard.setData(
                               ClipboardData(text: smsBody),
                             );
+                            final Uri smsUri = WatermarkLocationEngine.build110SmsUri(snapshot: snap, incidentType: selectedType, isZh: widget.isZh);
+                            await NativeHardwareBridge.launchNativeSms(smsUri.toString());
                             if (!mounted) return;
                             sheetNav.pop();
                             messenger.showSnackBar(

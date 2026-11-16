@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/native_hardware_bridge.dart';
 import '../../core/taiwan_report_repository.dart';
 
 /// Tab 3：全台 22 縣市通報入口、道交法條模板庫與 7 日時效案件夾
@@ -86,6 +87,7 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
     final String city = portal.localizedCityName(isZh: widget.isZh);
 
     await Clipboard.setData(ClipboardData(text: url));
+    await NativeHardwareBridge.openOfficialPortalSafari(url);
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
