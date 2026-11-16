@@ -5,6 +5,7 @@ import 'package:timecam_pro_app/core/activation_quota_engine.dart';
 import 'package:timecam_pro_app/core/video_compression_engine.dart';
 import 'package:timecam_pro_app/core/watermark_location_engine.dart';
 import 'package:timecam_pro_app/main.dart';
+import 'package:timecam_pro_app/ui/widgets/export_handoff_banner.dart';
 import 'package:timecam_pro_app/ui/widgets/paywall_sheet.dart';
 import 'package:timecam_pro_app/ui/widgets/taiwan_plate_quick_pad.dart';
 
@@ -55,6 +56,14 @@ void main() {
     );
     expect(q2.decision, equals(ExportGateDecision.interceptWithPaywall));
     expect(q2.remainingFreeExports, equals(0));
+    expect(
+      ExportHandoffBanner.resolvePortalByAddress('臺南市東區中華東路').id,
+      equals('tainan'),
+    );
+    expect(
+      ExportHandoffBanner.resolvePortalByAddress('桃園市國道一號北向49K').id,
+      equals('east_highway'),
+    );
     expect(
       TaiwanReportRepository.filterPortals(query: 'tainan').length,
       equals(1),

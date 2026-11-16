@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/native_hardware_bridge.dart';
 import '../../core/taiwan_report_repository.dart';
+import '../widgets/export_handoff_banner.dart';
 
 /// Tab 3：全台 22 縣市通報入口、道交法條模板庫與 7 日時效案件夾
 class ReportPortalTab extends StatefulWidget {
@@ -12,6 +13,8 @@ class ReportPortalTab extends StatefulWidget {
     required this.cases,
     required this.onUpdateCaseStatus,
     required this.onRequestPaywall,
+    this.activeHandoff,
+    this.onDismissHandoff,
   });
 
   final bool isZh;
@@ -20,6 +23,8 @@ class ReportPortalTab extends StatefulWidget {
   final void Function(String caseId, CaseSubmissionStatus nextStatus)
       onUpdateCaseStatus;
   final ValueChanged<String> onRequestPaywall;
+  final ExportHandoffContext? activeHandoff;
+  final VoidCallback? onDismissHandoff;
 
   @override
   State<ReportPortalTab> createState() => _ReportPortalTabState();
@@ -747,6 +752,16 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          if (widget.activeHandoff != null)
+            ExportHandoffBanner(
+              isZh: widget.isZh,
+              handoff: widget.activeHandoff!,
+              onOpenTrafficPortal: (CityReportPortal p) =>
+                  _openOrCopyPortalUrl(p, isEpa: false),
+              onOpenEpaPortal: (CityReportPortal p) =>
+                  _openOrCopyPortalUrl(p, isEpa: true),
+              onDismiss: widget.onDismissHandoff ?? () {},
+            ),
           _buildEvidenceCaseVault(),
           const SizedBox(height: 12),
           _buildStatuteTemplatesSection(),

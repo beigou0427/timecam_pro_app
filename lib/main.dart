@@ -6,6 +6,7 @@ import 'core/watermark_location_engine.dart';
 import 'ui/tabs/camera_evidence_tab.dart';
 import 'ui/tabs/report_portal_tab.dart';
 import 'ui/tabs/video_compressor_tab.dart';
+import 'ui/widgets/export_handoff_banner.dart';
 import 'ui/widgets/paywall_sheet.dart';
 
 void main() {
@@ -78,6 +79,7 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
   int _duoRightPaneIndex = 0;
   late bool _isZh;
   bool _isProUnlocked = false;
+  ExportHandoffContext? _activeHandoff;
   late List<EvidenceCaseRecord> _cases;
 
   @override
@@ -157,6 +159,12 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
     );
     setState(() {
       _cases = <EvidenceCaseRecord>[newRecord, ..._cases];
+      _activeHandoff = ExportHandoffBanner.createContext(
+        plateNumber: plateNumber,
+        address: address,
+        outputSizeMB: plan.estimatedOutputMB,
+        clipboardSummary: '$plateNumber | $nowFormatted | $address',
+      );
       _currentTabIndex = 2;
       _duoRightPaneIndex = 1;
     });
