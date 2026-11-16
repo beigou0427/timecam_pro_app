@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/native_hardware_bridge.dart';
+import '../../core/evidence_integrity_engine.dart';
 import '../../core/watermark_location_engine.dart';
 import '../widgets/taiwan_plate_quick_pad.dart';
 
@@ -488,6 +489,11 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
   }
 
   Widget _buildLiveWatermarkOverlay(WatermarkSnapshot snap) {
+    final EvidenceIntegrityCertificate cert =
+        EvidenceIntegrityEngine.generateCertificate(
+      snapshot: snap,
+      isProUnlocked: widget.isProUnlocked,
+    );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -572,6 +578,20 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
               fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              cert.displayBadge(isZh: widget.isZh),
+              style: const TextStyle(
+                color: Color(0xFF38BDF8),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+              ),
             ),
           ),
           if (snap.plateOrProjectNote.isNotEmpty) ...<Widget>[

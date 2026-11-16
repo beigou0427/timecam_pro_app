@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:timecam_pro_app/core/taiwan_report_repository.dart';
 import 'package:timecam_pro_app/core/activation_quota_engine.dart';
 import 'package:timecam_pro_app/core/video_compression_engine.dart';
+import 'package:timecam_pro_app/core/evidence_integrity_engine.dart';
 import 'package:timecam_pro_app/core/watermark_location_engine.dart';
 import 'package:timecam_pro_app/main.dart';
 import 'package:timecam_pro_app/ui/widgets/export_handoff_banner.dart';
@@ -63,6 +64,34 @@ void main() {
     expect(
       ExportHandoffBanner.resolvePortalByAddress('桃園市國道一號北向49K').id,
       equals('east_highway'),
+    );
+    final WatermarkSnapshot s1 = WatermarkLocationEngine.createSnapshot(
+      timestamp: utcTime,
+      plateOrProjectNote: 'ABC-8899',
+      isProUnlocked: true,
+    );
+    final EvidenceIntegrityCertificate cert =
+        EvidenceIntegrityEngine.generateCertificate(
+      snapshot: s1,
+      isProUnlocked: true,
+    );
+    expect(cert.sealCode.startsWith('TC-'), isTrue);
+    expect(cert.sealCode.length, equals(17));
+    expect(
+      EvidenceIntegrityEngine.verifySealIntegrity(
+        snapshot: s1,
+        expectedSealCode: cert.sealCode,
+      ),
+      isTrue,
+    );
+    final WatermarkSnapshot tampered =
+        s1.copyWith(plateOrProjectNote: 'ABC-9999');
+    expect(
+      EvidenceIntegrityEngine.verifySealIntegrity(
+        snapshot: tampered,
+        expectedSealCode: cert.sealCode,
+      ),
+      isFalse,
     );
     expect(
       TaiwanReportRepository.filterPortals(query: 'tainan').length,
