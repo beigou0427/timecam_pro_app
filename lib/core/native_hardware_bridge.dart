@@ -1,9 +1,13 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// iOS 原生硬體通道 (CoreLocation / AVFoundation / Photos / SFSafariViewController)
 class NativeHardwareBridge {
   const NativeHardwareBridge._();
+
+  static bool get _isTestSandbox =>
+      kIsWeb || Platform.environment.containsKey('FLUTTER_TEST');
 
   static const MethodChannel _channel =
       MethodChannel('com.beigou.timecampro/native');
@@ -12,7 +16,7 @@ class NativeHardwareBridge {
   static Future<Map<String, dynamic>?> fetchLiveGpsAddress({
     bool isTestMode = false,
   }) async {
-    if (isTestMode || kIsWeb) return null;
+    if (isTestMode || _isTestSandbox) return null;
     try {
       final Map<Object?, Object?>? res = await _channel
           .invokeMethod<Map<Object?, Object?>>('getLiveGpsAddress');
@@ -29,7 +33,7 @@ class NativeHardwareBridge {
   static Future<Map<String, dynamic>?> pickVideoFromPhotos({
     bool isTestMode = false,
   }) async {
-    if (isTestMode || kIsWeb) return null;
+    if (isTestMode || _isTestSandbox) return null;
     try {
       final Map<Object?, Object?>? res = await _channel
           .invokeMethod<Map<Object?, Object?>>('pickVideoFromLibrary');
@@ -47,7 +51,7 @@ class NativeHardwareBridge {
     required double trimSeconds,
     bool isTestMode = false,
   }) async {
-    if (isTestMode || kIsWeb) return null;
+    if (isTestMode || _isTestSandbox) return null;
     try {
       final Map<Object?, Object?>? res =
           await _channel.invokeMethod<Map<Object?, Object?>>(
@@ -68,7 +72,7 @@ class NativeHardwareBridge {
     String url, {
     bool isTestMode = false,
   }) async {
-    if (isTestMode || kIsWeb) return false;
+    if (isTestMode || _isTestSandbox) return false;
     try {
       final bool? opened = await _channel.invokeMethod<bool>(
         'openOfficialPortalSafari',
@@ -85,7 +89,7 @@ class NativeHardwareBridge {
     String smsUri, {
     bool isTestMode = false,
   }) async {
-    if (isTestMode || kIsWeb) return false;
+    if (isTestMode || _isTestSandbox) return false;
     try {
       final bool? launched = await _channel.invokeMethod<bool>(
         'launchNativeSms',
@@ -102,7 +106,7 @@ class NativeHardwareBridge {
     Uint8List pngBytes, {
     bool isTestMode = false,
   }) async {
-    if (isTestMode || kIsWeb) return false;
+    if (isTestMode || _isTestSandbox) return false;
     try {
       final bool? saved = await _channel.invokeMethod<bool>(
         'saveWatermarkPhotoBytes',

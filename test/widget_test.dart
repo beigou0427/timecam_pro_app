@@ -9,6 +9,7 @@ import 'package:timecam_pro_app/main.dart';
 import 'package:timecam_pro_app/ui/widgets/export_handoff_banner.dart';
 import 'package:timecam_pro_app/ui/widgets/paywall_sheet.dart';
 import 'package:timecam_pro_app/ui/widgets/taiwan_plate_quick_pad.dart';
+import 'package:timecam_pro_app/ui/widgets/viral_share_card_sheet.dart';
 
 void main() {
   test('Core Engines: 20MB bitrate lock, NaN guard, UTC+8 & 7-day limit', () {
@@ -44,6 +45,13 @@ void main() {
     );
     expect(remHours, equals(120));
     expect(TaiwanPlateQuickPad.sanitizeTaiwanPlate('rcdO88I'), equals('RCD-0881'));
+    expect(
+      ViralShareCardSheet.maskPlateText(
+        'ABC-8899 紅線違停',
+        SharePrivacyMaskMode.maskMiddlePlate,
+      ),
+      equals('ABC-**99 紅線違停'),
+    );
     final QuotaStatusSnapshot q1 = ActivationQuotaEngine.evaluateGate(
       isProUnlocked: false,
       usedFreeExports: 0,
@@ -101,7 +109,7 @@ void main() {
 
   testWidgets('UI Flow: Tab navigation, 110 SMS sheet & Bilingual switch',
       (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(430, 932);
+    tester.view.physicalSize = const Size(430, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -114,7 +122,10 @@ void main() {
     await tester.pump();
     expect(find.text('TimeCam Pro'), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('open_110_sms_sheet_btn')));
+    final Finder smsBtn = find.byKey(const Key('open_110_sms_sheet_btn'));
+    await tester.ensureVisible(smsBtn);
+    await tester.pump();
+    await tester.tap(smsBtn);
     await tester.pumpAndSettle();
     expect(find.textContaining('0911510914'), findsWidgets);
 
@@ -124,7 +135,7 @@ void main() {
 
   testWidgets('Paywall E2E: 20MB export intercept, PulsingCtaButton & Restore',
       (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(430, 932);
+    tester.view.physicalSize = const Size(430, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

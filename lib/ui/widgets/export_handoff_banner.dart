@@ -52,9 +52,10 @@ class ExportHandoffBanner extends StatelessWidget {
     const List<CityReportPortal> portals =
         TaiwanReportRepository.allCityPortals;
 
-    if (normalized.contains('國道') ||
-        normalized.contains('highway') ||
-        normalized.contains('freeway')) {
+    final RegExp highwayRegex = RegExp(
+      r'(國道|高速公路|快速道路|快速公路|台6[12468]|台7[2468]|台8[2468]|highway|freeway|expressway)',
+    );
+    if (highwayRegex.hasMatch(normalized)) {
       return portals.last;
     }
 

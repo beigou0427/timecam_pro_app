@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../core/native_hardware_bridge.dart';
 import '../../core/taiwan_report_repository.dart';
 import '../widgets/export_handoff_banner.dart';
+import '../widgets/viral_share_card_sheet.dart';
 
 /// Tab 3：全台 22 縣市通報入口、道交法條模板庫與 7 日時效案件夾
 class ReportPortalTab extends StatefulWidget {
@@ -104,6 +105,31 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
+    );
+  }
+
+
+  TrafficStatuteTemplate _resolveStatuteByCode(String code) {
+    for (final TrafficStatuteTemplate t
+        in TaiwanReportRepository.statuteTemplates) {
+      if (t.code == code) return t;
+    }
+    return TaiwanReportRepository.statuteTemplates.first;
+  }
+
+  void _openViralShareSheet(EvidenceCaseRecord record) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) {
+        return ViralShareCardSheet(
+          isZh: widget.isZh,
+          record: record,
+          statute: _resolveStatuteByCode(record.statuteCode),
+        );
+      },
     );
   }
 
@@ -253,8 +279,22 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      OutlinedButton.icon(
-                        key: Key('toggle_case_status_${record.id}'),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          IconButton(
+                            key: Key('share_case_card_btn_${record.id}'),
+                            tooltip: widget.isZh ? '生成社群戰報卡' : 'Viral Share Card',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _openViralShareSheet(record),
+                            icon: const Icon(
+                              Icons.share_rounded,
+                              color: Color(0xFFF59E0B),
+                              size: 18,
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            key: Key('toggle_case_status_${record.id}'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
                           visualDensity: VisualDensity.compact,
@@ -278,6 +318,8 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
                             ),
                           ),
                         ),
+                      ),
+                        ],
                       ),
                     ],
                   ),
@@ -714,6 +756,8 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
                             ),
                           ),
                         ),
+                      ),
+                        ],
                       ),
                     ],
                   ),
