@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:http/http.dart' as http;
 
-const String keyId = '853IQM8TC6VX';
+const String keyId = 'WC3YUQ44X5';
 const String issuerId = '7c8a4cba-398c-4e88-88bb-9252f72ecdc9';
 const String bundleId = 'com.beigou.timecampro';
 const String supportUrl = 'https://beigou0427.github.io/timecam_pro_app/';
@@ -153,7 +153,7 @@ Future<void> ensureBundleIdRegistered(Map<String, String> headers) async {
       return;
     }
   }
-  await http.post(
+  final http.Response cr = await http.post(
     Uri.parse('$baseUrl/v1/bundleIds'),
     headers: headers,
     body: jsonEncode(<String, dynamic>{
@@ -167,6 +167,7 @@ Future<void> ensureBundleIdRegistered(Map<String, String> headers) async {
       },
     }),
   );
+  stdout.writeln('🟢 Bundle ID 註冊結果 (${cr.statusCode}): ${cr.body}');
 }
 
 Future<void> main() async {
@@ -199,7 +200,7 @@ Future<void> main() async {
     headers: headers,
   );
   if (appRes.statusCode != 200) {
-    stderr.writeln('⚠️ ASC API 回應異常：${appRes.statusCode}');
+    stderr.writeln('⚠️ ASC API 回應異常：${appRes.statusCode} ${appRes.body}');
     return;
   }
 
