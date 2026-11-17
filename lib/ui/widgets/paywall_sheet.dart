@@ -1,43 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/ariely_decoy_pricing_engine.dart';
+import '../../core/epa_reward_calculator_engine.dart';
+import '../../core/hormozi_grand_slam_offer_engine.dart';
+import '../../core/verna_flash_offer_engine.dart';
 
-/// Pro 專業版三層誘餌定價方案列舉
 enum ProPlanTier {
-  /// 主力高轉換方案：終身買斷 (一次付費，永久解鎖)
+  b2bCrew(
+    productId: 'com.beigou.timecampro.crew1990',
+    titleZh: '工程班組 5 機包 (支援公司報帳)',
+    titleEn: '5-Device Engineering Crew Pack',
+    priceTextZh: r'NT$1,990',
+    priceTextEn: r'$59.99',
+    subNoteZh: r'平均每台僅 NT$398・自訂公司抬頭與 A4 驗收書',
+    subNoteEn: r'Just $12/device • Custom company headers & PDF',
+    badgeZh: '👷 B2B 工程團隊首選',
+    badgeEn: '👷 B2B TEAM PACK',
+  ),
   lifetime(
-    productId: 'com.beigou.timecampro.lifetime',
-    titleZh: 'Pro 終身買斷版 (永久解鎖)',
-    titleEn: 'Pro Lifetime (One-Time Purchase)',
-    priceTextZh: r'NT$290',
-    priceTextEn: r'$9.99',
-    subNoteZh: '一次付費永久使用・省下每次剪片轉檔 15 分鐘',
-    subNoteEn: 'Pay once, own forever. No recurring fees.',
-    badgeZh: '🔥 85% 車友首選・最划算',
+    productId: 'com.beigou.timecampro.lifetime590',
+    titleZh: '旗艦終身買斷版 (全套解鎖)',
+    titleEn: 'Flagship Lifetime (All Unlocked)',
+    priceTextZh: r'NT$590',
+    priceTextEn: r'$19.99',
+    subNoteZh: r'只比年費多 NT$40 ➔ 永久終身＋法條＋12碼防偽',
+    subNoteEn: r'Just $1 more than 1-Yr ➔ Own forever!',
+    badgeZh: '🔥 68% 用戶首選・最划算',
     badgeEn: '🔥 BEST VALUE',
   ),
-
-  /// 免費試用錨點方案：年度訂閱 (含 3 天免費試用)
   annual(
-    productId: 'com.beigou.timecampro.annual',
-    titleZh: 'Pro 年度專業版 (含3天免費試用)',
-    titleEn: 'Pro Annual (3-Day Free Trial)',
-    priceTextZh: r'NT$590 / 年',
-    priceTextEn: r'$19.99 / yr',
-    subNoteZh: r'平均每日僅 NT$1.6・隨時可於設定取消',
-    subNoteEn: r'Just $0.05/day. Cancel anytime in Settings.',
-    badgeZh: '免費試用 3 天',
-    badgeEn: '3-DAY FREE TRIAL',
+    productId: 'com.beigou.timecampro.annual550',
+    titleZh: '純年費基本授權 (1年期)',
+    titleEn: 'Basic Annual License (1 Year)',
+    priceTextZh: r'NT$550 / 年',
+    priceTextEn: r'$18.99 / yr',
+    subNoteZh: r'平均每日 NT$1.5・不含完整法條與12碼防偽章',
+    subNoteEn: r'$18.99/yr • Renews annually',
+    badgeZh: '1年期基礎版',
+    badgeEn: '1-YEAR BASIC',
   ),
-
-  /// 價格對照錨點：月度訂閱
   monthly(
-    productId: 'com.beigou.timecampro.monthly',
-    titleZh: 'Pro 單月體驗版',
-    titleEn: 'Pro Monthly Plan',
-    priceTextZh: r'NT$90 / 月',
-    priceTextEn: r'$2.99 / mo',
-    subNoteZh: '適合短期外勤專案或單次大宗案件整理',
-    subNoteEn: 'Flexible monthly access for short-term projects.',
+    productId: 'com.beigou.timecampro.monthly150',
+    titleZh: '單月輕量體驗版',
+    titleEn: 'Monthly Starter Plan',
+    priceTextZh: r'NT$150 / 月',
+    priceTextEn: r'$4.99 / mo',
+    subNoteZh: '適合短期單次案件壓縮',
+    subNoteEn: 'Flexible monthly access',
     badgeZh: '',
     badgeEn: '',
   );
@@ -65,14 +74,11 @@ enum ProPlanTier {
   final String badgeEn;
 
   String localizedTitle({required bool isZh}) => isZh ? titleZh : titleEn;
-  String localizedPrice({required bool isZh}) =>
-      isZh ? priceTextZh : priceTextEn;
-  String localizedSubNote({required bool isZh}) =>
-      isZh ? subNoteZh : subNoteEn;
+  String localizedPrice({required bool isZh}) => isZh ? priceTextZh : priceTextEn;
+  String localizedSubNote({required bool isZh}) => isZh ? subNoteZh : subNoteEn;
   String localizedBadge({required bool isZh}) => isZh ? badgeZh : badgeEn;
 }
 
-/// 1250ms 非整數週期高轉化呼吸脈衝行動呼籲按鈕
 class PulsingCtaButton extends StatefulWidget {
   const PulsingCtaButton({
     super.key,
@@ -80,7 +86,6 @@ class PulsingCtaButton extends StatefulWidget {
     required this.onPressed,
     this.isLoading = false,
   });
-
   final String label;
   final VoidCallback onPressed;
   final bool isLoading;
@@ -101,7 +106,6 @@ class _PulsingCtaButtonState extends State<PulsingCtaButton>
       vsync: this,
       duration: const Duration(milliseconds: 1250),
     )..repeat(reverse: true);
-
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.035).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
@@ -170,7 +174,6 @@ class _PulsingCtaButtonState extends State<PulsingCtaButton>
   }
 }
 
-/// 高轉化 Pro 解鎖付費牆底部彈窗 (支援損失規避情境動態標題)
 class PaywallSheet extends StatefulWidget {
   const PaywallSheet({
     super.key,
@@ -179,11 +182,11 @@ class PaywallSheet extends StatefulWidget {
     required this.triggerReasonEn,
     required this.onUnlockSuccess,
   });
-
   final bool isZh;
   final String triggerReasonZh;
   final String triggerReasonEn;
   final ValueChanged<ProPlanTier> onUnlockSuccess;
+
   @override
   State<PaywallSheet> createState() => _PaywallSheetState();
 }
@@ -191,6 +194,7 @@ class PaywallSheet extends StatefulWidget {
 class _PaywallSheetState extends State<PaywallSheet> {
   ProPlanTier _selectedTier = ProPlanTier.lifetime;
   bool _isProcessing = false;
+  final DateTime _flashOpenedAtUtc = DateTime.now().toUtc();
 
   Widget _buildLossAversionHeader() {
     final String reason =
@@ -219,7 +223,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
               reason,
               style: const TextStyle(
                 color: Color(0xFFFDE68A),
-                fontSize: 13.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 height: 1.35,
               ),
@@ -230,25 +234,87 @@ class _PaywallSheetState extends State<PaywallSheet> {
     );
   }
 
-  Widget _buildFeatureRow(String textZh, String textEn) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+  Widget _buildAdvisoryStackCard() {
+    final FlashOfferState flash = VernaFlashOfferEngine.evaluateWindow(
+      triggeredAtUtc: _flashOpenedAtUtc,
+      nowUtc: DateTime.now().toUtc(),
+    );
+    final String timerText = VernaFlashOfferEngine.formatMmSs(flash.remainingSeconds);
+    final String hormoziText = HormoziGrandSlamOfferEngine.buildValueStackHeadline(
+      offerPriceNtd: 590,
+      isZh: widget.isZh,
+    );
+    final EpaRewardEstimate roiEst = EpaRewardCalculatorEngine.calculateReward(
+      cityId: 'taipei_city',
+      item: EpaViolationItem.cigaretteButt,
+    );
+    final String roiText = EpaRewardCalculatorEngine.buildRoiPitchText(
+      roiEst,
+      isZh: widget.isZh,
+    );
+    final String arielyText = ArielyDecoyPricingEngine.buildDecoyComparisonPitch(
+      isZh: widget.isZh,
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: const BorderRadius.all(Radius.circular(14)),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.65)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Icon(
-            Icons.check_circle_rounded,
-            color: Color(0xFF10B981),
-            size: 19,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              widget.isZh ? textZh : textEn,
-              style: const TextStyle(
-                color: Color(0xFFE2E8F0),
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  hormoziText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEF4444),
+                  borderRadius: BorderRadius.all(Radius.circular(6)),
+                ),
+                child: Text(
+                  '⏳ $timerText',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            roiText,
+            style: const TextStyle(
+              color: Color(0xFF34D399),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            arielyText,
+            style: const TextStyle(
+              color: Color(0xFF38BDF8),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
             ),
           ),
         ],
@@ -261,7 +327,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
     final String badge = tier.localizedBadge(isZh: widget.isZh);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         borderRadius: const BorderRadius.all(Radius.circular(14)),
         onTap: _isProcessing
@@ -274,7 +340,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
               },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: isSelected
                 ? const Color(0xFF1E293B)
@@ -292,11 +358,8 @@ class _PaywallSheetState extends State<PaywallSheet> {
             children: <Widget>[
               if (badge.isNotEmpty)
                 Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
+                  margin: const EdgeInsets.only(bottom: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: const BoxDecoration(
                     color: Color(0xFFF59E0B),
                     borderRadius: BorderRadius.all(Radius.circular(6)),
@@ -305,7 +368,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
                     badge,
                     style: const TextStyle(
                       color: Color(0xFF121212),
-                      fontSize: 11,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -330,7 +393,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
                           tier.localizedTitle(isZh: widget.isZh),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 15,
+                            fontSize: 14.5,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -339,7 +402,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
                           tier.localizedSubNote(isZh: widget.isZh),
                           style: const TextStyle(
                             color: Color(0xFF94A3B8),
-                            fontSize: 12,
+                            fontSize: 11.5,
                           ),
                         ),
                       ],
@@ -354,7 +417,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
                         color: isSelected
                             ? const Color(0xFFF59E0B)
                             : Colors.white,
-                        fontSize: 17,
+                        fontSize: 16.5,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -367,20 +430,25 @@ class _PaywallSheetState extends State<PaywallSheet> {
       ),
     );
   }
+
   String _ctaLabel() {
     switch (_selectedTier) {
+      case ProPlanTier.b2bCrew:
+        return widget.isZh
+            ? r'解鎖 5 人工程班組包 (NT$1,990 可報帳)'
+            : r'Unlock 5-Device Crew Pack ($59.99)';
       case ProPlanTier.lifetime:
         return widget.isZh
-            ? r'立即以 NT$290 永久解鎖 Pro'
-            : r'Unlock Lifetime Pro for $9.99';
+            ? r'立即以 NT$590 永久解鎖旗艦終身版'
+            : r'Unlock Flagship Lifetime for $19.99';
       case ProPlanTier.annual:
         return widget.isZh
-            ? r'開始 3 天免費試用 (之後 NT$590/年)'
-            : r'Start 3-Day Free Trial ($19.99/yr)';
+            ? r'訂閱 1 年期基本授權 (NT$550/年)'
+            : r'Subscribe 1-Year Basic ($18.99/yr)';
       case ProPlanTier.monthly:
         return widget.isZh
-            ? r'立即訂閱單月版 (NT$90/月)'
-            : r'Subscribe Monthly ($2.99/mo)';
+            ? r'訂閱單月輕量體驗版 (NT$150/月)'
+            : r'Subscribe Monthly ($4.99/mo)';
     }
   }
 
@@ -458,24 +526,9 @@ class _PaywallSheetState extends State<PaywallSheet> {
               ),
               const SizedBox(height: 8),
               _buildLossAversionHeader(),
-              const SizedBox(height: 14),
-              _buildFeatureRow(
-                '無限制 20MB / 10MB 檢舉影片智能位元率壓縮匯出',
-                'Unlimited 20MB / 10MB Smart Bitrate Video Compression',
-              ),
-              _buildFeatureRow(
-                '解鎖全台道交條例（未禮讓行人/逼車/煙蒂獎金）標準模板',
-                'Unlock All Traffic & EPA Reward Report Templates',
-              ),
-              _buildFeatureRow(
-                '移除照片與影片右下角官方品牌微浮水印標章',
-                'Remove Brand Watermark Badge from Photos & Videos',
-              ),
-              _buildFeatureRow(
-                '自訂外勤工程案場抬頭、車牌號碼與防偽 UTC+8 認證章',
-                'Custom Project Header, Plate Note & UTC+8 Seal',
-              ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
+              _buildAdvisoryStackCard(),
+              const SizedBox(height: 12),
               for (final ProPlanTier tier in ProPlanTier.values)
                 _buildPlanCard(tier),
               const SizedBox(height: 6),
@@ -484,7 +537,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
                 isLoading: _isProcessing,
                 onPressed: _handlePurchase,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
@@ -504,8 +557,8 @@ class _PaywallSheetState extends State<PaywallSheet> {
               ),
               Text(
                 widget.isZh
-                    ? '確認購買後將由您的 Apple ID 扣款。終身買斷版為一次付費永久有效；訂閱方案除非於當期結束前 24 小時於系統設定取消，否則將自動續訂。'
-                    : 'Payment will be charged to your Apple ID. Lifetime plan is a one-time purchase. Subscriptions auto-renew unless canceled 24 hours before period end.',
+                    ? '確認購買後將由您的 Apple ID 扣款。終身與班組買斷版為一次付費永久有效；訂閱方案除非於當期結束前 24 小時於系統設定取消，否則將自動續訂。'
+                    : 'Payment will be charged to your Apple ID. Lifetime & Crew packs are one-time purchases. Subscriptions auto-renew unless canceled 24h before period end.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF64748B),
