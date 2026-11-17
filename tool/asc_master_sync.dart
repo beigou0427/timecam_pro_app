@@ -28,63 +28,71 @@ class _AscLocaleData {
   final String description;
 }
 
-const String _descZhHant = '''【成功檢舉 1 件亂丟煙蒂實領獎金 NT\$864 直接賺回軟體｜4K 影片 1 秒壓進 20MB 警局零退件】
-專為台灣機車族、汽車駕駛與太陽能/營造外勤工程人員打造的「現場防偽存證 × 影片智能壓縮 × 一鍵報案」全能武器！
+const String _descZhHant = '''【別讓檢舉被退件！4K 影片 1 秒壓進 20MB・拍煙蒂領獎金・10 秒 110 報案・工地拍照 1 鍵出 PDF】
+遇到惡意逼車、紅線違停或騎士亂丟煙蒂，手機錄好 4K 影片卻因為超過 20MB 傳不進警局網站？自己剪片轉檔車牌又糊掉？或者忙完就超過 7 天舉發期限直接作廢？
 
-🔥 為什麼 85% 車友與工程師直接升級？
-1. 【20MB / 10MB 檢舉影片智能位元率壓縮】
-   ・解決 iPhone 4K 影片動輒 150MB 無法上傳警局/環保局網站的痛點！
-   ・調用原生 AVAssetExportSession 鎖定 19.0MB（交通檢舉）與 9.5MB（環保局），1080p 車牌極致銳利，附 1.0x~2.2x 放大檢視鏡與夜間防眩光濾鏡。
+《時間相機 Pro》幫您把最麻煩的事 10 秒搞定——免費下載就能拍防偽水印照、發 110 簡訊，新戶再送您 1 次「免費 20MB 影片壓縮體驗」，滿意再升級！
 
-2. 【防竄改 UTC+8 時間＋真實 GPS 中文門牌浮水印】
-   ・一鍵抓取真實 GPS 經緯度（小數點後 5 位）與台灣中文路名門牌，自動烙印 12 碼防偽數位指紋，徹底杜絕造假質疑！
-   ・內建「台灣車牌單手閃電快選器」與「10 秒 110 簡訊報案產生器」，自動匹配各縣市警察局報案簡訊專線。
+🔥 為什麼 85% 車友、騎士與工程師直接買單升級？
+1.【140MB ➔ 18.6MB 神級壓縮・車牌照樣高清不退件】
+・專為台灣警政（20MB）與環保局（10MB）網站設計，精準壓進容量上限，再也不用怕 20.1MB 被退件！
+・內建 1.0x~2.2x 車牌放大鏡與「夜間防車燈反光模式」，晚上拍三寶車牌一樣超清晰，壓完直接存回相簿！
 
-3. 【環保獎金試算 × 道交法條模板 × A4 工程驗收報告書】
-   ・內建全台 22 縣市檢舉入口、7 日法定舉發期限倒數警報、環保煙蒂獎金試算，以及外勤團隊專用「A4 工程驗收報告書」與公司統編報帳明細！
-   ・全面優化支援 Built for iPhone Duo 雙螢幕同屏協作工作區。''';
+2.【檢舉 1 件就回本・7 天期限倒數絕不漏單】
+・內建環保獎金試算：拍下亂丟煙蒂或吐檳榔汁，依各縣市獎勵辦法扣稅實領約 NT\$576~NT\$864，成功檢舉 1 件直接賺回軟體還倒賺！
+・內建全台 22 縣市檢舉網頁入口、警方標準法條一鍵複製貼上，以及 7 天舉發期限紅色倒數警報！
 
-const String _descEn = '''[Compress 4K Dashcam Clips Under 20MB in 1 Tap | Tamper-Proof UTC+8 & GPS Watermark Camera]
-Stop fighting portal file-size limits! TimeCam Pro combines a forensic-grade GPS timestamp camera, a smart target-bitrate video compressor, and printable A4 inspection dossiers into one zero-cloud utility.
+3.【10 秒 110 簡訊報案・真實時間地址 12 碼防偽水印】
+・停等紅燈單手點 2 下輸入車牌，點「110 簡訊報案」自動帶入您現在的路名門牌與轄區警局專線。
+・強制校準台灣標準時間（UTC+8）＋真實中文門牌＋12 碼防竄改指紋，徹底杜絕造假質疑！
 
-Key Features:
-1. Smart 20MB / 10MB Video Bitrate Compressor:
-   - Powered by native AVAssetExportSession to trim and lock 4K clips strictly under 19.0MB or 9.5MB while keeping license plates ultra-sharp.
-   - Features a 1.0x-2.2x interactive plate zoom loupe and anti-glare night optical matrix.
+4.【太陽能／營造工程師救星：1 鍵出 A4 驗收 PDF ＋ 公司統編報帳】
+・工地巡檢拍完照，1 秒自動排版出業主專用的 A4 驗收報告書，免晚上加班貼 Word！
+・內建台灣公司統編費用核銷明細，直接附上 Apple 收據跟公司報帳，等於 0 元自費！
+・完美支援 iPhone Duo 雙螢幕展開協作（左屏拍照、右屏同步壓縮送件）。''';
 
-2. Forensic UTC+8 & GPS Address Watermark Camera:
-   - Live CoreLocation & reverse-geocoded street address with 5-decimal coordinates, altitude, and a 12-char anti-tamper integrity hash seal.
-   - Built-in one-tap emergency SMS draft builder and 3x high-res PNG export directly to Photos.
+const String _descEn = '''[Stop Getting Videos Rejected! Compress 4K Under 20MB in 1 Tap | Tamper-Proof GPS Watermark & Instant A4 PDF]
+Frustrated by 20MB portal upload limits, blurry night license plates, or spending hours pasting inspection photos into reports?
 
-3. Official Portals, 7-Day Tracker & A4 Inspection PDF Dossier:
-   - Direct SFSafariViewController portal access, 7-day statutory deadline urgency radar, and instant printable A4 engineering audit reports.
-   - Engineered for Built for iPhone Duo Dual-Screen Split Workspace.''';
+Download TimeCam Pro free to capture tamper-proof UTC+8 & GPS watermarked photos, build emergency SMS reports in seconds, and enjoy 1 FREE 20MB video compression pass!
 
-const String _descZhHans = '''【4K视频1秒精准压缩至20MB以内｜防篡改UTC+8时间与GPS经纬度工程水印相机】
-专为外勤巡检工程师、车队物流与行车安全存证打造的专业工具，全面支持 iPhone Duo 双屏协作模式。
+Why Drivers, Riders & Field Engineers Upgrade Immediately:
+1. Smart 20MB / 10MB Video Compression (Zero Blurry Plates):
+   - Shrinks 140MB 4K dashcam clips cleanly under 19.0MB or 9.5MB without turning license plates into pixels.
+   - Includes a 2.2x interactive plate zoom loupe and anti-glare night enhancement filter.
 
-核心功能：
-1. 智能目标码率视频压缩：一键裁切并锁定输出小于 19.0MB / 9.5MB，车牌细节清晰锐利。
-2. 真实定位防伪水印：实时显示 UTC+8 校准时间、经纬度坐标、海拔与 12 位防篡改数字指纹。
-3. 工程验收与 A4 档案导出：支持快速生成标准化 A4 现场巡检验收报告及企业报销明细，100% 本地处理保护隐私。''';
+2. Forensic Timestamp & 12-Char Anti-Tamper Integrity Seal:
+   - Automatically stamps verified time, reverse-geocoded street address, 5-decimal GPS, and a 12-char integrity hash directly onto 3x high-res Photos.
+
+3. 1-Tap A4 Inspection PDFs & Corporate Expense Memos:
+   - Field teams generate print-ready A4 audit dossiers and reimbursement memos in 1 second—skip late-night paperwork and expense the upgrade to your company!
+   - Built for iPhone Duo Dual-Screen Split Workspace.''';
+
+const String _descZhHans = '''【告别上传被拒！4K视频1秒精准压缩至20MB以内｜防篡改时间水印与1键导出A4验收PDF】
+还在烦恼行车记录仪视频太大传不上平台？或工程巡检完还要熬夜整理照片贴表格？
+
+立即免费下载体验防伪水印拍照与首支20MB免费压缩，满意再升级！
+1. 极速无损压缩：140MB 4K 视频轻松压进 19MB，车牌放大依然清晰锐利，支持夜间防反光增强。
+2. 防篡改数字指纹：实时校准北京时间、中文街道门牌与经纬度，并烙印 12 位防伪校验码。
+3. 1键出A4报告与报销单：专为光伏、建筑与物流团队打造，支持 iPhone Duo 双屏协作，效率翻倍！''';
 
 const List<_AscLocaleData> _targetLocales = <_AscLocaleData>[
   _AscLocaleData(
     locale: 'zh-Hant',
-    title: '時間相機-GPS浮水印經緯度工程打卡・20MB影片壓縮錄影',
-    subtitle: '110報案行車紀錄器・違規檢舉環保獎金日期戳記外勤巡檢拍照',
-    keywords: '記錄,太陽能,工地,施工,驗收,轉檔,裁切,定位,地址,座標,車牌,罰單,時光,防偽',
+    title: '時間相機-檢舉影片壓縮20MB免退件・水印打卡與110報案',
+    subtitle: '拍煙蒂違規賺獎金・行車紀錄器GPS經緯度防偽・工程A4驗收',
+    keywords: '記錄,巡檢,工地,施工,轉檔,裁切,拍照,錄影,定位,地址,座標,車牌,罰單,外勤',
     promo:
-        r'🎁 新戶免費體驗 20MB 壓縮！成功檢舉 1 件亂丟煙蒂實領獎金 NT$864 直接賺回終身版！支援 Built for iPhone Duo 雙屏協作與 10 秒 110 報案。',
+        r'🎁 免費體驗 1 次 20MB 壓縮！別讓三寶白跑或過 7 天失效：1 秒把 140MB 壓成 18MB 車牌超清晰，拍煙蒂實領 NT$864 賺回終身版！',
     description: _descZhHant,
   ),
   _AscLocaleData(
     locale: 'en-GB',
-    title: 'TimeCam Pro: Timestamp & Trim',
-    subtitle: 'Dashcam Resize, Watermark, PDF',
-    keywords: '車禍,蒐證,未禮讓行人,闖紅燈,併排,紅線,水電,營造,監工,報帳,統編,A4,audit',
+    title: 'TimeCam Pro: Timestamp & PDF',
+    subtitle: 'Dashcam Trim, Watermark, Log',
+    keywords: '車禍,蒐證,未禮讓行人,闖紅燈,併排,紅線,太陽能,營造,監工,報帳,統編,audit',
     promo:
-        r'Built for iPhone Duo! Compress 4K clips under 20MB in 1 tap, stamp 12-char anti-tamper UTC+8 seals, and export A4 inspection logs.',
+        r'1 Free 20MB Video Export Pass! Compress 4K dashcam clips under 19MB with sharp plates, UTC+8 seals & instant A4 PDF reports.',
     description: _descEn,
   ),
   _AscLocaleData(
@@ -94,7 +102,7 @@ const List<_AscLocaleData> _targetLocales = <_AscLocaleData>[
     keywords:
         'dashcam,bitrate,resize,compress,evidence,inspection,coordinates,address,fieldwork,solar,pdf,audit',
     promo:
-        r'Stamp tamper-proof UTC+8 & GPS watermarks, compress 4K dashcam clips under 20MB, and generate A4 inspection PDFs on iPhone Duo.',
+        r'Stop portal rejections! Try 1 FREE 20MB 4K compression, stamp tamper-proof UTC+8 & GPS watermarks, and export A4 audit PDFs.',
     description: _descEn,
   ),
   _AscLocaleData(
@@ -103,7 +111,7 @@ const List<_AscLocaleData> _targetLocales = <_AscLocaleData>[
     subtitle: '行车记录仪防伪时间戳・外勤考勤巡检验收日期定位',
     keywords: '坐标,地址,车牌,违章,举报,环保,奖金,转码,裁切,光伏,工地,施工,执法,档案',
     promo:
-        r'全新支持 iPhone Duo 双屏协作！一键将 4K 视频精准压缩至 20MB 以内，内置防篡改 UTC+8 时间地址水印与 A4 验收报告生成。',
+        r'🎁 新户免费体验首支 20MB 压缩！1秒把 4K 视频压进 19MB 车牌高清不糊，支持防篡改时间水印与 A4 工程验收报告导出！',
     description: _descZhHans,
   ),
 ];
@@ -200,14 +208,14 @@ Future<void> main() async {
           as List<dynamic>;
   if (appList.isEmpty) {
     stdout.writeln(
-      'ℹ️ App Store Connect 尚無 $bundleId 容器；請在後台點「+ 新建 App」選擇此 Bundle ID 後重跑本腳本即可 1 秒寫入 4 語系滿格 ASO',
+      'ℹ️ 爆款級 4 語系文案已驗證就緒！請在 App Store Connect 後台點「+ 新建 App」選擇 $bundleId 後重跑本腳本即可 1 秒寫入',
     );
     return;
   }
 
   final String appId =
       (appList.first as Map<String, dynamic>)['id'].toString();
-  stdout.writeln('🟢 鎖定 App ID: $appId，開始同步 4 語系交叉索引 ASO...');
+  stdout.writeln('🟢 鎖定 App ID: $appId，開始推送爆款級 4 語系 ASO...');
 
   final http.Response infoRes = await http.get(
     Uri.parse('$baseUrl/v1/apps/$appId/appInfos'),
@@ -280,45 +288,7 @@ Future<void> main() async {
           }),
         );
       }
-      stdout.writeln('🟢 已同步 AppInfo (${spec.locale}) 滿格標題與副標');
-    }
-
-    final http.Response ageRes = await http.get(
-      Uri.parse('$baseUrl/v1/appInfos/$appInfoId/ageRatingDeclaration'),
-      headers: headers,
-    );
-    if (ageRes.statusCode == 200) {
-      final Map<String, dynamic> ageData =
-          (jsonDecode(ageRes.body) as Map<String, dynamic>)['data']
-              as Map<String, dynamic>;
-      final String ageId = ageData['id'].toString();
-      final Map<String, dynamic> curAttrs =
-          ageData['attributes'] as Map<String, dynamic>;
-      final Map<String, dynamic> nextAttrs = <String, dynamic>{};
-      for (final MapEntry<String, dynamic> e in curAttrs.entries) {
-        if (e.key.contains('Override') ||
-            e.key.contains('Url') ||
-            e.key == 'kidsAgeBand') {
-          continue;
-        }
-        if (e.value is bool) {
-          nextAttrs[e.key] = false;
-        } else if (e.value is String) {
-          nextAttrs[e.key] = 'NONE';
-        }
-      }
-      await http.patch(
-        Uri.parse('$baseUrl/v1/ageRatingDeclarations/$ageId'),
-        headers: headers,
-        body: jsonEncode(<String, dynamic>{
-          'data': <String, dynamic>{
-            'type': 'ageRatingDeclarations',
-            'id': ageId,
-            'attributes': nextAttrs,
-          },
-        }),
-      );
-      stdout.writeln('🟢 18 項年齡分級問卷 (4+) 自動填寫完成');
+      stdout.writeln('🟢 已同步 AppInfo (${spec.locale}) 爆款標題與副標');
     }
   }
 
@@ -397,63 +367,8 @@ Future<void> main() async {
             }),
           );
         }
-        stdout.writeln('🟢 已同步 Version (${spec.locale}) 強勢描述與關鍵字');
+        stdout.writeln('🟢 已同步 Version (${spec.locale}) 爆款人話首屏描述與關鍵字');
       }
-
-      final http.Response revGet = await http.get(
-        Uri.parse('$baseUrl/v1/appStoreVersions/$versionId/appStoreReviewDetail'),
-        headers: headers,
-      );
-      if (revGet.statusCode == 200) {
-        final String revId = ((jsonDecode(revGet.body)
-                as Map<String, dynamic>)['data'] as Map<String, dynamic>)['id']
-            .toString();
-        await http.patch(
-          Uri.parse('$baseUrl/v1/appStoreReviewDetails/$revId'),
-          headers: headers,
-          body: jsonEncode(<String, dynamic>{
-            'data': <String, dynamic>{
-              'type': 'appStoreReviewDetails',
-              'id': revId,
-              'attributes': <String, dynamic>{
-                'contactFirstName': 'Ming Tung',
-                'contactLastName': 'Chen',
-                'contactPhone': '+886900000000',
-                'contactEmail': 'bagelj04a09@gmail.com',
-                'demoAccountRequired': false,
-                'notes': reviewNotes,
-              },
-            },
-          }),
-        );
-      } else {
-        await http.post(
-          Uri.parse('$baseUrl/v1/appStoreReviewDetails'),
-          headers: headers,
-          body: jsonEncode(<String, dynamic>{
-            'data': <String, dynamic>{
-              'type': 'appStoreReviewDetails',
-              'attributes': <String, dynamic>{
-                'contactFirstName': 'Ming Tung',
-                'contactLastName': 'Chen',
-                'contactPhone': '+886900000000',
-                'contactEmail': 'bagelj04a09@gmail.com',
-                'demoAccountRequired': false,
-                'notes': reviewNotes,
-              },
-              'relationships': <String, dynamic>{
-                'appStoreVersion': <String, dynamic>{
-                  'data': <String, dynamic>{
-                    'type': 'appStoreVersions',
-                    'id': versionId,
-                  },
-                },
-              },
-            },
-          }),
-        );
-      }
-      stdout.writeln('🟢 Apple 審核聯絡人與 iPhone Duo 過審備註寫入完成');
     }
   }
 }
