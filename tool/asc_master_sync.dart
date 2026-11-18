@@ -77,43 +77,16 @@ const String _descZhHans = '''【告别上传被拒！4K视频1秒精准压缩�
 3. 1键出A4报告与报销单：专为光伏、建筑与物流团队打造，支持 iPhone Duo 双屏协作，效率翻倍！''';
 
 const List<_AscLocaleData> _targetLocales = <_AscLocaleData>[
-  _AscLocaleData(
-    locale: 'zh-Hant',
-    title: '時間相機-檢舉影片壓縮20MB免退件・水印打卡與110報案',
-    subtitle: '拍煙蒂違規賺獎金・行車紀錄器GPS經緯度防偽・工程A4驗收',
-    keywords: '記錄,巡檢,工地,施工,轉檔,裁切,拍照,錄影,定位,地址,座標,車牌,罰單,外勤',
-    promo:
-        r'🎁 免費體驗 1 次 20MB 壓縮！別讓三寶白跑或過 7 天失效：1 秒把 140MB 壓成 18MB 車牌超清晰，拍煙蒂實領 NT$864 賺回終身版！',
-    description: _descZhHant,
-  ),
-  _AscLocaleData(
-    locale: 'en-GB',
-    title: 'TimeCam Pro: Timestamp & PDF',
-    subtitle: 'Dashcam Trim, Watermark, Log',
-    keywords: '車禍,蒐證,未禮讓行人,闖紅燈,併排,紅線,太陽能,營造,監工,報帳,統編,audit',
-    promo:
-        r'1 Free 20MB Video Export Pass! Compress 4K dashcam clips under 19MB with sharp plates, UTC+8 seals & instant A4 PDF reports.',
-    description: _descEn,
-  ),
-  _AscLocaleData(
-    locale: 'en-US',
-    title: 'Timestamp Camera: GPS & 20MB',
-    subtitle: 'Watermark Cam, Video Trim, Log',
-    keywords:
-        'dashcam,bitrate,resize,compress,evidence,inspection,coordinates,address,fieldwork,solar,pdf,audit',
-    promo:
-        r'Stop portal rejections! Try 1 FREE 20MB 4K compression, stamp tamper-proof UTC+8 & GPS watermarks, and export A4 audit PDFs.',
-    description: _descEn,
-  ),
-  _AscLocaleData(
-    locale: 'zh-Hans',
-    title: '时间相机-水印经纬度打卡・20MB视频压缩工程取证',
-    subtitle: '行车记录仪防伪时间戳・外勤考勤巡检验收日期定位',
-    keywords: '坐标,地址,车牌,违章,举报,环保,奖金,转码,裁切,光伏,工地,施工,执法,档案',
-    promo:
-        r'🎁 新户免费体验首支 20MB 压缩！1秒把 4K 视频压进 19MB 车牌高清不糊，支持防篡改时间水印与 A4 工程验收报告导出！',
-    description: _descZhHans,
-  ),
+  _AscLocaleData(locale: 'zh-Hant', title: '時間相機：GPS水印打卡與經緯度・20MB影片壓縮錄影', subtitle: '行車紀錄器違規檢舉・環保煙蒂獎金・工地外勤拍照防偽', keywords: '記錄,巡檢,太陽能,施工,驗收,轉檔,裁切,定位,地址,座標,車牌,罰單,時光,110', promo: r'🎁 新戶免費1次20MB壓縮！拍煙蒂實領NT$864回本', description: _descZhHant),
+  _AscLocaleData(locale: 'en-GB', title: '日期戳記110報案助手・車禍蒐證A4工程PDF', subtitle: '未禮讓行人闖紅燈併排紅線・太陽能營造水電報帳統編', keywords: 'TimeCam,Timestamp,Watermark,Dashcam,Trim,Resize,Log,Audit,GPS,Exif,Solar,Pipe,Site', promo: r'Compress 4K clips under 19MB & export A4 audit PDFs', description: _descEn),
+  _AscLocaleData(locale: 'en-US', title: 'Timestamp Camera: GPS & 20MB', subtitle: 'Watermark Cam, Video Trim, Log', keywords: 'dashcam,bitrate,resize,compress,evidence,inspection,coordinates,address,fieldwork,solar,pdf,audit', promo: r'Try 1 FREE 20MB 4K compression & tamper-proof GPS seals', description: _descEn),
+  _AscLocaleData(locale: 'zh-Hans', title: '时间相机-水印经纬度打卡・20MB视频压缩工程取证', subtitle: '行车记录仪防伪时间戳・外勤考勤巡检验收日期定位', keywords: '坐标,地址,车牌,违章,举报,环保,奖金,转码,裁切,光伏,工地,施工,执法,档案', promo: r'🎁 免费体验20MB视频压缩与防伪时间水印A4验收报告', description: _descZhHans),
+  _AscLocaleData(locale: 'es-MX', title: 'Camara GPS Marca de Agua 20MB', subtitle: 'Compresor Video, Fecha, Obra', keywords: 'exif,geo,tag,location,date,time,stamp,recorder,clip,size,shrink,report,construction,utility,pro', promo: r'Marca de agua GPS y compresor de video 20MB para reportes', description: _descEn),
+  _AscLocaleData(locale: 'ko', title: '타임스탬프 카메라: GPS 위치 워터마크', subtitle: '블랙박스 20MB 동영상 압축 및 현장 점검', keywords: '카메라,위치,날짜,워터마크,블랙박스,압축,현장,기록,좌표,주소,증거', promo: r'GPS 위치 워터마크 및 20MB 블랙박스 동영상 압축', description: _descEn),
+  _AscLocaleData(locale: 'vi', title: 'Camera Moc Thoi Gian GPS 20MB', subtitle: 'Nen Video Hanh Trinh & Cong', keywords: 'camera,anh,video,nen,vi,tri,toa,do,ngay,gio,cong,truong,bao,cao,chung,cu,xe,bien,so', promo: r'Camera dong dau thoi gian GPS & nen video 20MB', description: _descEn),
+  _AscLocaleData(locale: 'pt-BR', title: 'Camera Carimbo Data GPS 20MB', subtitle: 'Comprimir Video, Obra e Laudo', keywords: 'foto,data,hora,local,mapa,exif,placa,transito,obra,engenharia,laudo,arquivo,compactar,mb', promo: r'Carimbo GPS e compressor de video 20MB para vistorias', description: _descEn),
+  _AscLocaleData(locale: 'fr-FR', title: 'Horodatage Camera GPS & 20MB', subtitle: 'Compresseur Video, Chantier', keywords: 'horodatage,filigrane,compresser,taille,chantier,preuve,rapport,carte,altitude,tableau,pdf,pro', promo: r'Horodatage GPS certifie et compression video 20MB', description: _descEn),
+  _AscLocaleData(locale: 'ar-SA', title: 'كاميرا الطابع الزمني GPS 20MB', subtitle: 'ضغط الفيديو والعلامة المائية', keywords: 'كاميرا,فيديو,ضغط,تاريخ,وقت,موقع,تقرير,exif,pdf', promo: r'ختم الوقت والموقع وضغط الفيديو 20 ميجابايت', description: _descEn),
 ];
 
 const String reviewNotes =
