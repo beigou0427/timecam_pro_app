@@ -290,3 +290,9 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
       ],
     );
   }
+  Widget _buildBanner() => ConversionHookBanner(isZh: _isZh, isProUnlocked: _isProUnlocked, activePersona: _activePersona, cases: _cases, onPersonaChanged: (UserPersonaMode m) => setState(() => _activePersona = m), onRequestPaywall: _openPaywall);
+  Widget _buildDuoToggle() => Padding(padding: const EdgeInsets.all(8), child: Row(children: <Widget>[
+    Expanded(child: ChoiceChip(label: Center(child: Text(_isZh ? '⚡ 20MB壓縮' : '⚡ Compress')), selected: _duoRightPaneIndex == 0, onSelected: (_) => setState(() => _duoRightPaneIndex = 0))),
+    const SizedBox(width: 8),
+    Expanded(child: ChoiceChip(label: Center(child: Text(_isZh ? '🏛️ 通報 (${_cases.length})' : '🏛️ Portals (${_cases.length})')), selected: _duoRightPaneIndex == 1, onSelected: (_) => setState(() => _duoRightPaneIndex = 1))),
+  ]));
