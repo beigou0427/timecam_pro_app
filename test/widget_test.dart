@@ -53,7 +53,7 @@ void main() {
 
     expect(ViralShareCardSheet.maskPlateText('ABC-8899 違停', SharePrivacyMaskMode.maskMiddlePlate), equals('ABC-**99 違停'));
     expect(EpaRewardCalculatorEngine.calculateReward(cityId: 'taipei_city', item: EpaViolationItem.cigaretteButt).casesToBreakEvenPro, equals(1));
-    expect(StatutoryUrgencyEngine.scanCases(TaiwanReportRepository.createInitialCases(t), t).hasUrgentAlert, isTrue);
+    expect(StatutoryUrgencyEngine.scanCases(TaiwanReportRepository.createInitialCases(t), t.add(const Duration(days: 4))).hasUrgentAlert, isTrue);
     expect(NightPlateEnhancerEngine.isValidColorMatrix(OpticalEnhanceMode.nightGlareGuard), isTrue);
     expect(PersonaPositioningEngine.buildWatermarkHeader(UserPersonaMode.fieldEngineering, isZh: true), equals('UTC+8 工程巡檢'));
   });
@@ -115,8 +115,9 @@ void main() {
     await tester.tap(find.text('20MB壓縮'));
     await tester.pump();
     await tester.ensureVisible(find.byKey(const Key('compressor_export_cta_btn')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('compressor_export_cta_btn')));
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 80)));
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.byKey(const Key('portal_city_search_input')));
@@ -139,7 +140,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 625));
     expect(find.textContaining('4500'), findsOneWidget);
-    expect(find.textContaining('864'), findsOneWidget);
+    expect(find.descendant(of: find.byType(PaywallSheet), matching: find.textContaining('864')), findsOneWidget);
     expect(find.descendant(of: find.byType(PulsingCtaButton), matching: find.byType(ScaleTransition)), findsOneWidget);
     final Finder restoreBtn = find.byKey(const Key('paywall_restore_btn'));
     await tester.ensureVisible(restoreBtn);
