@@ -296,3 +296,26 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
     const SizedBox(width: 8),
     Expanded(child: ChoiceChip(label: Center(child: Text(_isZh ? '🏛️ 通報 (${_cases.length})' : '🏛️ Portals (${_cases.length})')), selected: _duoRightPaneIndex == 1, onSelected: (_) => setState(() => _duoRightPaneIndex = 1))),
   ]));
+
+  Widget _tabCam() => CameraEvidenceTab(isZh: _isZh, isProUnlocked: _isProUnlocked, enableLiveClock: !widget.isTestMode, onCaptureEvidence: _handleCaptureEvidence, onRequestPaywall: _openPaywall);
+  Widget _tabComp() => VideoCompressorTab(isZh: _isZh, isProUnlocked: _isProUnlocked, isTestMode: widget.isTestMode, onRequestPaywall: _openPaywall, onExportCompleted: _handleExportCompleted);
+  Widget _tabPort() => ReportPortalTab(isZh: _isZh, isProUnlocked: _isProUnlocked, cases: _cases, onUpdateCaseStatus: _handleUpdateCaseStatus, onRequestPaywall: _openPaywall);
+  Widget _buildDuoBody() => Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+    Expanded(flex: 5, child: _tabCam()),
+    Container(width: 16, color: const Color(0xFF090D16)),
+    Expanded(flex: 6, child: Column(children: <Widget>[_buildDuoToggle(), Expanded(child: IndexedStack(index: _duoRightPaneIndex, children: <Widget>[_tabComp(), _tabPort()]))])),
+  ]);
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (BuildContext ctx, BoxConstraints c) {
+    final bool isDuo = c.maxWidth >= 720;
+    return Scaffold(
+      appBar: _buildTopAppBar(isDuoExpanded: isDuo),
+      body: Column(children: <Widget>[_buildBanner(), Expanded(child: isDuo ? _buildDuoBody() : IndexedStack(index: _currentTabIndex, children: <Widget>[_tabCam(), _tabComp(), _tabPort()]))]),
+      bottomNavigationBar: isDuo ? null : NavigationBar(selectedIndex: _currentTabIndex, onDestinationSelected: (int i) => setState(() => _currentTabIndex = i), destinations: <NavigationDestination>[
+        NavigationDestination(icon: const Icon(Icons.camera_alt_rounded), label: _isZh ? '蒐證相機' : 'Camera'),
+        NavigationDestination(icon: const Icon(Icons.compress_rounded), label: _isZh ? '20MB壓縮' : 'Compress'),
+        NavigationDestination(icon: const Icon(Icons.policy_rounded), label: _isZh ? '通報案件' : 'Portals'),
+      ]),
+    );
+  });
+}
