@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'core/persona_positioning_engine.dart';
 import 'core/taiwan_report_repository.dart';
 import 'core/video_compression_engine.dart';
 import 'core/watermark_location_engine.dart';
 import 'ui/tabs/camera_evidence_tab.dart';
 import 'ui/tabs/report_portal_tab.dart';
 import 'ui/tabs/video_compressor_tab.dart';
+import 'ui/widgets/conversion_hook_banner.dart';
 import 'ui/widgets/paywall_sheet.dart';
 
 void main() {
@@ -76,6 +78,7 @@ class TimeCamHomeShell extends StatefulWidget {
 class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
   int _currentTabIndex = 0;
   int _duoRightPaneIndex = 0;
+  UserPersonaMode _activePersona = UserPersonaMode.trafficEvidence;
   late bool _isZh;
   bool _isProUnlocked = false;
   late List<EvidenceCaseRecord> _cases;
@@ -277,8 +280,8 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
               if (!_isProUnlocked) {
                 _openPaywall(
                   _isZh
-                      ? r'立即升級 Pro 終身買斷版 (NT$290)，永久解鎖 20MB 壓縮與全套法條模板！'
-                      : r'Upgrade to Pro Lifetime ($9.99) for unlimited 20MB compression & templates!',
+                      ? r'立即升級旗艦終身版 (NT$590) 或 5人工程班組包 (NT$1,990)，永久解鎖 20MB 壓縮、A4 驗收 PDF 與全套法條！'
+                      : r'Upgrade to Lifetime ($19.99) or 5-Seat Crew Pack ($59.99) for unlimited 20MB compression & A4 PDFs!',
                 );
               }
             },
@@ -287,210 +290,3 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
       ],
     );
   }
-
-  Widget _buildDuoDualScreenBody() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Expanded(
-          flex: 5,
-          child: CameraEvidenceTab(
-            isZh: _isZh,
-            isProUnlocked: _isProUnlocked,
-            enableLiveClock: !widget.isTestMode,
-            onCaptureEvidence: _handleCaptureEvidence,
-            onRequestPaywall: _openPaywall,
-          ),
-        ),
-        Container(
-          width: 16,
-          color: const Color(0xFF090D16),
-          child: Center(
-            child: Container(
-              width: 3,
-              height: 64,
-              decoration: const BoxDecoration(
-                color: Color(0xFF334155),
-                borderRadius: BorderRadius.all(Radius.circular(2)),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          flex: 6,
-          child: Column(
-            children: <Widget>[
-              Container(
-                color: const Color(0xFF0F172A),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: ChoiceChip(
-                        key: const Key('duo_right_compressor_tab'),
-                        label: Center(
-                          child: Text(
-                            _isZh
-                                ? '⚡ 20MB 檢舉影片壓縮器'
-                                : '⚡ 20MB Video Compressor',
-                            style: TextStyle(
-                              color: _duoRightPaneIndex == 0
-                                  ? const Color(0xFF121212)
-                                  : Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ),
-                        selected: _duoRightPaneIndex == 0,
-                        selectedColor: const Color(0xFFF59E0B),
-                        backgroundColor: const Color(0xFF1E293B),
-                        onSelected: (_) {
-                          setState(() {
-                            _duoRightPaneIndex = 0;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ChoiceChip(
-                        key: const Key('duo_right_portal_tab'),
-                        label: Center(
-                          child: Text(
-                            _isZh
-                                ? '🏛️ 通報入口與案件庫 (${_cases.length})'
-                                : '🏛️ Portals & Vault (${_cases.length})',
-                            style: TextStyle(
-                              color: _duoRightPaneIndex == 1
-                                  ? const Color(0xFF121212)
-                                  : Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                        ),
-                        selected: _duoRightPaneIndex == 1,
-                        selectedColor: const Color(0xFFF59E0B),
-                        backgroundColor: const Color(0xFF1E293B),
-                        onSelected: (_) {
-                          setState(() {
-                            _duoRightPaneIndex = 1;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: IndexedStack(
-                  index: _duoRightPaneIndex,
-                  children: <Widget>[
-                    VideoCompressorTab(
-                      isZh: _isZh,
-                      isProUnlocked: _isProUnlocked,
-                      isTestMode: widget.isTestMode,
-                      onRequestPaywall: _openPaywall,
-                      onExportCompleted: _handleExportCompleted,
-                    ),
-                    ReportPortalTab(
-                      isZh: _isZh,
-                      isProUnlocked: _isProUnlocked,
-                      cases: _cases,
-                      onUpdateCaseStatus: _handleUpdateCaseStatus,
-                      onRequestPaywall: _openPaywall,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final bool isDuoExpanded = constraints.maxWidth >= 720;
-        final List<Widget> singleScreenPages = <Widget>[
-          CameraEvidenceTab(
-            isZh: _isZh,
-            isProUnlocked: _isProUnlocked,
-            enableLiveClock: !widget.isTestMode,
-            onCaptureEvidence: _handleCaptureEvidence,
-            onRequestPaywall: _openPaywall,
-          ),
-          VideoCompressorTab(
-            isZh: _isZh,
-            isProUnlocked: _isProUnlocked,
-            isTestMode: widget.isTestMode,
-            onRequestPaywall: _openPaywall,
-            onExportCompleted: _handleExportCompleted,
-          ),
-          ReportPortalTab(
-            isZh: _isZh,
-            isProUnlocked: _isProUnlocked,
-            cases: _cases,
-            onUpdateCaseStatus: _handleUpdateCaseStatus,
-            onRequestPaywall: _openPaywall,
-          ),
-        ];
-
-        return Scaffold(
-          appBar: _buildTopAppBar(isDuoExpanded: isDuoExpanded),
-          body: isDuoExpanded
-              ? _buildDuoDualScreenBody()
-              : IndexedStack(
-                  index: _currentTabIndex,
-                  children: singleScreenPages,
-                ),
-          bottomNavigationBar: isDuoExpanded
-              ? null
-              : NavigationBar(
-                  backgroundColor: const Color(0xFF0F172A),
-                  indicatorColor:
-                      const Color(0xFFF59E0B).withValues(alpha: 0.2),
-                  selectedIndex: _currentTabIndex,
-                  onDestinationSelected: (int idx) {
-                    HapticFeedback.selectionClick();
-                    setState(() {
-                      _currentTabIndex = idx;
-                    });
-                  },
-                  destinations: <NavigationDestination>[
-                    NavigationDestination(
-                      icon: const Icon(Icons.camera_alt_outlined),
-                      selectedIcon: const Icon(
-                        Icons.camera_alt_rounded,
-                        color: Color(0xFFF59E0B),
-                      ),
-                      label: _isZh ? '蒐證相機' : 'Camera',
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.compress_rounded),
-                      selectedIcon: const Icon(
-                        Icons.bolt_rounded,
-                        color: Color(0xFFF59E0B),
-                      ),
-                      label: _isZh ? '20MB壓縮' : '20MB Compress',
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.policy_outlined),
-                      selectedIcon: const Icon(
-                        Icons.policy_rounded,
-                        color: Color(0xFFF59E0B),
-                      ),
-                      label: _isZh ? '通報與案件' : 'Portals',
-                    ),
-                  ],
-                ),
-        );
-      },
-    );
-  }
-}
