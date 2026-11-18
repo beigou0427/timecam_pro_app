@@ -58,7 +58,7 @@ void main() {
     expect(PersonaPositioningEngine.buildWatermarkHeader(UserPersonaMode.fieldEngineering, isZh: true), equals('UTC+8 工程巡檢'));
   });
 
-  test('Stack 2 & 3: 10 Advisors (NT$30k+) + 10-Locale ASO 100 Score', () {
+  test(r'Stack 2 & 3: 10 Advisors (NT$30k+) + 10-Locale ASO 100 Score', () {
     expect(RevenueAcceleratorEngine.estimateMonthlyNetProfitNtd(annualCount: 35, personalLifetimeCount: 15, b2bContractorCount: 15), equals(31748));
     expect(HormoziGrandSlamOfferEngine.totalPerceivedValueNtd, equals(4500));
     expect(CampbellB2bSeatPricingEngine.pricePerSeatNtd(B2bTeamBundleTier.crew5Seats), equals(398));
