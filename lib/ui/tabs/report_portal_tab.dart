@@ -237,8 +237,10 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: <Widget>[
                       Text(
                         widget.isZh
