@@ -1,3 +1,4 @@
+import '../../core/storekit_iap_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/ariely_decoy_pricing_engine.dart';
@@ -452,33 +453,23 @@ class _PaywallSheetState extends State<PaywallSheet> {
     }
   }
 
-  Future<void> _handlePurchase() async {
-    if (_isProcessing) return;
-    setState(() {
-      _isProcessing = true;
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    if (!mounted) return;
-    setState(() {
-      _isProcessing = false;
-    });
-    widget.onUnlockSuccess(_selectedTier);
-  }
-
-  Future<void> _handleRestore() async {
-    if (_isProcessing) return;
-    HapticFeedback.lightImpact();
-    setState(() {
-      _isProcessing = true;
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-    if (!mounted) return;
-    setState(() {
-      _isProcessing = false;
-    });
-    widget.onUnlockSuccess(ProPlanTier.lifetime);
-  }
-
+  Future<void> _iap(
+    bool r) async { if (_isProcessing) return;
+  final sm = ScaffoldMessenger.of(context);
+  setState(() => _isProcessing = true);
+  final t2 = r ? ProPlanTier.lifetime
+    : _selectedTier; StorekitIapService.bind(() {
+    if (mounted) widget.onUnlockSuccess(t2);});
+  final e = await StorekitIapService.go(
+    r, t2.productId);
+  if (mounted == false) return;
+  setState(() => _isProcessing = false);
+  if (e is String) {
+    sm.showSnackBar(SnackBar(content:Text(e)));
+  } else if (StorekitIapService.isTest) {
+    widget.onUnlockSuccess(t2);}}
+  void _handlePurchase() => _iap(false);
+  void _handleRestore() => _iap(true);
   @override
   Widget build(BuildContext context) {
     return Container(
