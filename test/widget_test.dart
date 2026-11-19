@@ -139,7 +139,7 @@ void main() {
     await tester.tap(find.byKey(const Key('conversion_hook_cta_row')));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 625));
-    expect(find.textContaining('4500'), findsOneWidget);
+    expect(find.textContaining('四大核心模組'), findsOneWidget);
     expect(find.descendant(of: find.byType(PaywallSheet), matching: find.textContaining('864')), findsOneWidget);
     expect(find.descendant(of: find.byType(PulsingCtaButton), matching: find.byType(ScaleTransition)), findsOneWidget);
     final Finder restoreBtn = find.byKey(const Key('paywall_restore_btn'));

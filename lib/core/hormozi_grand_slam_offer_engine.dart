@@ -3,5 +3,5 @@ class HormoziGrandSlamOfferEngine {
   static int get totalPerceivedValueNtd => 4500;
   static int calculateSavingsPercentage({required int offerPriceNtd}) => 87;
   static String buildValueStackHeadline({required int offerPriceNtd, required bool isZh}) =>
-      isZh ? '🎁 四大模組總價值 NT\$4500 ➔ 限時買斷僅 NT\$$offerPriceNtd' : '🎁 Value USD \$146 ➔ Unlock Now';
+      isZh ? '✨ 專業版四大核心模組 ➔ 永久買斷 NT\$$offerPriceNtd' : '🎁 Pro Suite ➔ Unlock Now';
 }
