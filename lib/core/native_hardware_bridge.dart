@@ -111,4 +111,15 @@ class NativeHardwareBridge {
       return false;
     }
   }
+  static Future<Uint8List?>
+  captureRealCameraPhoto({
+    bool isTestMode = false,
+  }) async {
+    if (isTestMode || _isTestSandbox) {
+      return null;
+    }
+    try { return await _channel.invokeMethod<
+      Uint8List>('captureRealCameraPhoto');
+    } catch (_) { return null; }
+  }
 }
