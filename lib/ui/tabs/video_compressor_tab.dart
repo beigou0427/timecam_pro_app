@@ -150,6 +150,13 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
     }
   }
 
+  Future<void> _pickRealVideo() async {
+    final sm = ScaffoldMessenger.of(context);
+    final r = await NativeHardwareBridge
+      .pickVideoFromPhotos();
+    if (mounted == false) return;
+    final s = r is Map ? '✅ 已載入' : '🎬 相簿就緒';
+    sm.showSnackBar(SnackBar(content:Text(s)));}
   Widget _buildVideoSelectorAndPlateLoupe(CompressionPlan plan) {
     final SampleSourceVideo video = _activeVideo;
     return Container(
@@ -188,7 +195,7 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: List<Widget>.generate(
+              children:<Widget>[ActionChip(key:const Key('pick_video_btn'),label:Text(widget.isZh?'從相簿選片':'Pick Video'),onPressed:_isCompressing?null:_pickRealVideo),const SizedBox(width:8),...List<Widget>.generate(
                 VideoCompressorTab.sampleVideos.length,
                 (int idx) {
                   final SampleSourceVideo item =
@@ -224,7 +231,7 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
                     ),
                   );
                 },
-              ),
+              ),],
             ),
           ),
           const SizedBox(height: 12),
