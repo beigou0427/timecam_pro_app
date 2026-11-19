@@ -1,3 +1,4 @@
+import '../../core/native_hardware_bridge.dart';
 import '../../core/storekit_iap_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -529,9 +530,8 @@ class _PaywallSheetState extends State<PaywallSheet> {
                 onPressed: _handlePurchase,
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
+              Wrap(alignment:WrapAlignment.center,
+children: <Widget>[
                   TextButton(
                     key: const Key('paywall_restore_btn'),
                     onPressed: _isProcessing ? null : _handleRestore,
@@ -544,7 +544,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
                       ),
                     ),
                   ),
-                ],
+                TextButton(key:const Key('eula_btn'),onPressed:()=>NativeHardwareBridge.openOfficialPortalSafari('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'),child:Text(widget.isZh?'服務條款':'EULA')),TextButton(key:const Key('privacy_btn'),onPressed:()=>NativeHardwareBridge.openOfficialPortalSafari('https://github.com/beigou0427/timecam_pro_app'),child:Text(widget.isZh?'隱私權':'Privacy')),],
               ),
               Text(
                 widget.isZh
