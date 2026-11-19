@@ -22,7 +22,7 @@ class ArielyDecoyPricingEngine {
   static const List<DecoyPricingOption> decoyMatrix = <DecoyPricingOption>[
     DecoyPricingOption(role: ArielyOfferRole.lowAnchor, skuId: 'com.beigou.timecampro.monthly150', priceNtd: 150, priceUsd: 4.99, annualizedCostNtd: 1800, titleZh: '單月輕量體驗版', titleEn: 'Monthly Starter Plan', comparisonTagZh: r'一年累計 NT$1,800', comparisonTagEn: r'$4.99/mo'),
     DecoyPricingOption(role: ArielyOfferRole.decoyDominated, skuId: 'com.beigou.timecampro.annual550', priceNtd: 550, priceUsd: 18.99, annualizedCostNtd: 550, titleZh: '純年費基本授權 (1年期)', titleEn: 'Basic Annual License', comparisonTagZh: r'僅限1年使用・不含法條庫', comparisonTagEn: r'$18.99/yr'),
-    DecoyPricingOption(role: ArielyOfferRole.targetHero, skuId: 'com.beigou.timecampro.lifetime590', priceNtd: 590, priceUsd: 19.99, annualizedCostNtd: 295, titleZh: '終身買斷旗艦版', titleEn: 'Lifetime Flagship', comparisonTagZh: r'只比年費多 NT$40 ➔ 永久終身', comparisonTagEn: r'Just $1 more ➔ Own Forever'),
+    DecoyPricingOption(role: ArielyOfferRole.targetHero, skuId: 'com.beigou.timecampro.lifetime590', priceNtd: 590, priceUsd: 119.99, annualizedCostNtd: 295, titleZh: '終身買斷旗艦版', titleEn: 'Lifetime Flagship', comparisonTagZh: r'只比年費多 NT$40 ➔ 永久終身', comparisonTagEn: r'Just $1 more ➔ Own Forever'),
   ];
   static int twoYearTotalCostNtd(DecoyPricingOption option) => option.role == ArielyOfferRole.lowAnchor ? option.priceNtd * 24 : (option.role == ArielyOfferRole.decoyDominated ? option.priceNtd * 2 : option.priceNtd);
   static int twoYearSavingsVsDecoyNtd() => (twoYearTotalCostNtd(decoyMatrix[1]) - twoYearTotalCostNtd(decoyMatrix[2])).clamp(0, 100000);

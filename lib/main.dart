@@ -281,7 +281,7 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
                 _openPaywall(
                   _isZh
                       ? r'立即升級旗艦終身版 (NT$590) 或 5人工程班組包 (NT$1,990)，永久解鎖 20MB 壓縮、A4 驗收 PDF 與全套法條！'
-                      : r'Upgrade to Lifetime ($19.99) or 5-Seat Crew Pack ($59.99) for unlimited 20MB compression & A4 PDFs!',
+                      : r'Upgrade to Lifetime ($119.99) or 5-Seat Crew Pack ($519.99) for unlimited 20MB compression & A4 PDFs!',
                 );
               }
             },

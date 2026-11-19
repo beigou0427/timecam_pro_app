@@ -48,7 +48,7 @@ class VernaFlashOfferEngine {
     if (!state.isActive) {
       return isZh
           ? '⚡ 解鎖個人終身買斷版（NT\$${state.standardPriceNtd} 一次付費永久使用）'
-          : r'⚡ Unlock Personal Lifetime ($19.99 One-Time)';
+          : r'⚡ Unlock Personal Lifetime ($119.99 One-Time)';
     }
     final String timer = formatMmSs(state.remainingSeconds);
     return isZh

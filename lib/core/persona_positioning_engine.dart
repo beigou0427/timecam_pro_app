@@ -84,15 +84,15 @@ class PersonaPositioningEngine {
       case UserPersonaMode.trafficEvidence:
         return isZh
             ? r'🚓 升級 Pro (NT$590 買斷)：永久解鎖 20MB 檢舉影片壓縮與全台道交法條模板！'
-            : r'🚓 Pro Lifetime ($19.99): Unlimited 20MB video compression & traffic templates!';
+            : r'🚓 Pro Lifetime ($119.99): Unlimited 20MB video compression & traffic templates!';
       case UserPersonaMode.fieldEngineering:
         return isZh
             ? r'👷 升級 Pro (NT$590 買斷)：移除右下角品牌標章、啟用完整 12 碼防偽指紋與案場抬頭！'
-            : r'👷 Pro Lifetime ($19.99): Remove brand badge & unlock full 12-char integrity seal!';
+            : r'👷 Pro Lifetime ($119.99): Remove brand badge & unlock full 12-char integrity seal!';
       case UserPersonaMode.logisticsProof:
         return isZh
             ? r'📦 升級 Pro (NT$590 買斷)：無限匯出高壓縮比配送存證影片與防竄改時間水印！'
-            : r'📦 Pro Lifetime ($19.99): Unlimited delivery proof video compression & UTC+8 seal!';
+            : r'📦 Pro Lifetime ($119.99): Unlimited delivery proof video compression & UTC+8 seal!';
     }
   }
 }

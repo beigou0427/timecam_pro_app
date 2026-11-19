@@ -3390,7 +3390,7 @@ enum ProPlanTier {
     titleZh: '工程班組 5 機包 (支援公司報帳)',
     titleEn: '5-Device Engineering Crew Pack',
     priceTextZh: r'NT$1,990',
-    priceTextEn: r'$59.99',
+    priceTextEn: r'$519.99',
     subNoteZh: r'平均每台僅 NT$398・自訂公司抬頭與 A4 驗收書',
     subNoteEn: r'Just $12/device • Custom company headers & PDF',
     badgeZh: '👷 B2B 工程團隊首選',
@@ -3401,7 +3401,7 @@ enum ProPlanTier {
     titleZh: '旗艦終身買斷版 (全套解鎖)',
     titleEn: 'Flagship Lifetime (All Unlocked)',
     priceTextZh: r'NT$590',
-    priceTextEn: r'$19.99',
+    priceTextEn: r'$119.99',
     subNoteZh: r'只比年費多 NT$40 ➔ 永久終身＋法條＋12碼防偽',
     subNoteEn: r'Just $1 more than 1-Yr ➔ Own forever!',
     badgeZh: '🔥 68% 用戶首選・最划算',
@@ -3815,11 +3815,11 @@ class _PaywallSheetState extends State<PaywallSheet> {
       case ProPlanTier.b2bCrew:
         return widget.isZh
             ? r'解鎖 5 人工程班組包 (NT$1,990 可報帳)'
-            : r'Unlock 5-Device Crew Pack ($59.99)';
+            : r'Unlock 5-Device Crew Pack ($519.99)';
       case ProPlanTier.lifetime:
         return widget.isZh
             ? r'立即以 NT$590 永久解鎖旗艦終身版'
-            : r'Unlock Flagship Lifetime for $19.99';
+            : r'Unlock Flagship Lifetime for $119.99';
       case ProPlanTier.annual:
         return widget.isZh
             ? r'訂閱 1 年期基本授權 (NT$550/年)'
@@ -5496,7 +5496,7 @@ class VernaFlashOfferEngine {
     if (!state.isActive) {
       return isZh
           ? '⚡ 解鎖個人終身買斷版（NT\$${state.standardPriceNtd} 一次付費永久使用）'
-          : r'⚡ Unlock Personal Lifetime ($19.99 One-Time)';
+          : r'⚡ Unlock Personal Lifetime ($119.99 One-Time)';
     }
     final String timer = formatMmSs(state.remainingSeconds);
     return isZh
@@ -5951,16 +5951,16 @@ class PersonaPositioningEngine {
     switch (mode) {
       case UserPersonaMode.trafficEvidence:
         return isZh
-            ? r'🚓 升級 Pro (NT$290 買斷)：永久解鎖 20MB 檢舉影片壓縮與全台道交法條模板！'
-            : r'🚓 Pro Lifetime ($9.99): Unlimited 20MB video compression & traffic templates!';
+            ? r'🚓 升級 Pro (NT$590 買斷)：永久解鎖 20MB 檢舉影片壓縮與全台道交法條模板！'
+            : r'🚓 Pro Lifetime ($19.99): Unlimited 20MB video compression & traffic templates!';
       case UserPersonaMode.fieldEngineering:
         return isZh
-            ? r'👷 升級 Pro (NT$290 買斷)：移除右下角品牌標章、啟用完整 12 碼防偽指紋與案場抬頭！'
-            : r'👷 Pro Lifetime ($9.99): Remove brand badge & unlock full 12-char integrity seal!';
+            ? r'👷 升級 Pro (NT$590 買斷)：移除右下角品牌標章、啟用完整 12 碼防偽指紋與案場抬頭！'
+            : r'👷 Pro Lifetime ($19.99): Remove brand badge & unlock full 12-char integrity seal!';
       case UserPersonaMode.logisticsProof:
         return isZh
-            ? r'📦 升級 Pro (NT$290 買斷)：無限匯出高壓縮比配送存證影片與防竄改時間水印！'
-            : r'📦 Pro Lifetime ($9.99): Unlimited delivery proof video compression & UTC+8 seal!';
+            ? r'📦 升級 Pro (NT$590 買斷)：無限匯出高壓縮比配送存證影片與防竄改時間水印！'
+            : r'📦 Pro Lifetime ($19.99): Unlimited delivery proof video compression & UTC+8 seal!';
     }
   }
 }
@@ -6127,8 +6127,8 @@ class ActivationQuotaEngine {
     final String pct = savedPercentage.toStringAsFixed(0);
     if (quota.totalSavedMB > 0.0) {
       return isZh
-          ? '🔥 您剛才已體驗極速瘦身（累計已省下 ${quota.formattedTotalSavedMB}）！免費體驗券已用完，立即以 NT\$290 終身買斷，即可永久無限次匯出這支 $formattedEstimatedSize 檢舉影片（車號 $plateNumber，節省 $pct%）！'
-          : '🔥 You already saved ${quota.formattedTotalSavedMB} with your free pass! Unlock Pro Lifetime (\$9.99) to export this $formattedEstimatedSize clip (Plate $plateNumber, -$pct%) and enjoy unlimited exports!';
+          ? '🔥 您剛才已體驗極速瘦身（累計已省下 ${quota.formattedTotalSavedMB}）！免費體驗券已用完，立即以 NT\$590 終身買斷，即可永久無限次匯出這支 $formattedEstimatedSize 檢舉影片（車號 $plateNumber，節省 $pct%）！'
+          : '🔥 You already saved ${quota.formattedTotalSavedMB} with your free pass! Unlock Pro Lifetime (\$19.99) to export this $formattedEstimatedSize clip (Plate $plateNumber, -$pct%) and enjoy unlimited exports!';
     }
     return isZh
         ? '⚠️ 您的 $formattedEstimatedSize 檢舉影片（車號 $plateNumber，節省 $pct% 容量）已精算就緒！立即解鎖 Pro 即可一鍵壓縮匯出並趕在 7 日期限內送件。'
@@ -6848,7 +6848,7 @@ class EpaRewardEstimate {
 class EpaRewardCalculatorEngine {
   const EpaRewardCalculatorEngine._();
   static const double withholdingTaxRate = 0.20;
-  static const int proLifetimePriceNtd = 290;
+  static const int proLifetimePriceNtd = 590;
   static const Map<String, int> _rates = <String, int>{'taipei_city': 30, 'new_taipei': 30, 'taoyuan': 20, 'hsinchu': 30, 'taichung': 25, 'tainan': 20, 'kaohsiung': 30};
 
   static EpaRewardEstimate calculateReward({required String cityId, required EpaViolationItem item}) {
@@ -7314,16 +7314,16 @@ enum MonetizationTierSpec {
   personalLifetime(
     skuId: 'com.beigou.timecampro.lifetime590',
     priceNtd: 590,
-    priceUsd: 19.99,
+    priceUsd: 119.99,
     titleZh: '個人終身買斷版 (永久解鎖)',
     titleEn: 'Personal Lifetime (One-Time)',
     pitchZh: r'一次付費 NT$590 永久使用・檢舉 1 件煙蒂獎金即回本',
-    pitchEn: r'Pay $19.99 once, own forever. Zero recurring fees.',
+    pitchEn: r'Pay $119.99 once, own forever. Zero recurring fees.',
   ),
   b2bContractorPro(
     skuId: 'com.beigou.timecampro.b2b990',
     priceNtd: 990,
-    priceUsd: 29.99,
+    priceUsd: 219.99,
     titleZh: '工程商務驗收版 (公司抬頭/防偽章)',
     titleEn: 'B2B Contractor Edition',
     pitchZh: r'專為太陽能/營造包商打造・自訂公司標案抬頭與12碼防偽碼',
@@ -7417,7 +7417,7 @@ class ArielyDecoyPricingEngine {
   static const List<DecoyPricingOption> decoyMatrix = <DecoyPricingOption>[
     DecoyPricingOption(role: ArielyOfferRole.lowAnchor, skuId: 'com.beigou.timecampro.monthly150', priceNtd: 150, priceUsd: 4.99, annualizedCostNtd: 1800, titleZh: '單月輕量體驗版', titleEn: 'Monthly Starter Plan', comparisonTagZh: r'一年累計 NT$1,800', comparisonTagEn: r'$4.99/mo'),
     DecoyPricingOption(role: ArielyOfferRole.decoyDominated, skuId: 'com.beigou.timecampro.annual550', priceNtd: 550, priceUsd: 18.99, annualizedCostNtd: 550, titleZh: '純年費基本授權 (1年期)', titleEn: 'Basic Annual License', comparisonTagZh: r'僅限1年使用・不含法條庫', comparisonTagEn: r'$18.99/yr'),
-    DecoyPricingOption(role: ArielyOfferRole.targetHero, skuId: 'com.beigou.timecampro.lifetime590', priceNtd: 590, priceUsd: 19.99, annualizedCostNtd: 295, titleZh: '終身買斷旗艦版', titleEn: 'Lifetime Flagship', comparisonTagZh: r'只比年費多 NT$40 ➔ 永久終身', comparisonTagEn: r'Just $1 more ➔ Own Forever'),
+    DecoyPricingOption(role: ArielyOfferRole.targetHero, skuId: 'com.beigou.timecampro.lifetime590', priceNtd: 590, priceUsd: 119.99, annualizedCostNtd: 295, titleZh: '終身買斷旗艦版', titleEn: 'Lifetime Flagship', comparisonTagZh: r'只比年費多 NT$40 ➔ 永久終身', comparisonTagEn: r'Just $1 more ➔ Own Forever'),
   ];
   static int twoYearTotalCostNtd(DecoyPricingOption option) => option.role == ArielyOfferRole.lowAnchor ? option.priceNtd * 24 : (option.role == ArielyOfferRole.decoyDominated ? option.priceNtd * 2 : option.priceNtd);
   static int twoYearSavingsVsDecoyNtd() => (twoYearTotalCostNtd(decoyMatrix[1]) - twoYearTotalCostNtd(decoyMatrix[2])).clamp(0, 100000);

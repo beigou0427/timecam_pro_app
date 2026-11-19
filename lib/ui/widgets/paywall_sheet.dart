@@ -12,7 +12,7 @@ enum ProPlanTier {
     titleZh: '工程班組 5 機包 (支援公司報帳)',
     titleEn: '5-Device Engineering Crew Pack',
     priceTextZh: r'NT$1,990',
-    priceTextEn: r'$59.99',
+    priceTextEn: r'$519.99',
     subNoteZh: r'平均每台僅 NT$398・自訂公司抬頭與 A4 驗收書',
     subNoteEn: r'Just $12/device • Custom company headers & PDF',
     badgeZh: '👷 B2B 工程團隊首選',
@@ -23,7 +23,7 @@ enum ProPlanTier {
     titleZh: '旗艦終身買斷版 (全套解鎖)',
     titleEn: 'Flagship Lifetime (All Unlocked)',
     priceTextZh: r'NT$590',
-    priceTextEn: r'$19.99',
+    priceTextEn: r'$119.99',
     subNoteZh: r'只比年費多 NT$40 ➔ 永久終身＋法條＋12碼防偽',
     subNoteEn: r'Just $1 more than 1-Yr ➔ Own forever!',
     badgeZh: '🔥 68% 用戶首選・最划算',
@@ -431,11 +431,11 @@ class _PaywallSheetState extends State<PaywallSheet> {
       case ProPlanTier.b2bCrew:
         return widget.isZh
             ? r'解鎖 5 人工程班組包 (NT$1,990 可報帳)'
-            : r'Unlock 5-Device Crew Pack ($59.99)';
+            : r'Unlock 5-Device Crew Pack ($519.99)';
       case ProPlanTier.lifetime:
         return widget.isZh
             ? r'立即以 NT$590 永久解鎖旗艦終身版'
-            : r'Unlock Flagship Lifetime for $19.99';
+            : r'Unlock Flagship Lifetime for $119.99';
       case ProPlanTier.annual:
         return widget.isZh
             ? r'訂閱 1 年期基本授權 (NT$550/年)'
