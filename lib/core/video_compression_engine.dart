@@ -136,7 +136,7 @@ class VideoCompressionEngine {
   static const int minLicensePlateSharpBitrateBps = 2200000;
 
   /// 1080p 高銳利度理想視訊位元率門檻 (4.5 Mbps)
-  static const int ultraSharpBitrateBps = 4500000;
+  static const int ultraSharpBitrateBps = 1000000;
 
   /// 1080p 硬體編碼器上限位元率 (避免無謂膨脹，鎖定 16 Mbps)
   static const int maxHardwareBitrateBps = 16000000;
@@ -258,8 +258,8 @@ class VideoCompressionEngine {
       advisoryMessageEn: 'Please select a valid video and trim duration.',
     );
   }
-  /// 常用檢舉與存證快速裁切秒數預設值 (環保局10秒 / 交通動態違規15秒與30秒 / 逼車存證45秒)
-  static const List<int> quickTrimPresets = <int>[10, 15, 30, 45];
+  /// 常用檢舉與存證快速裁切秒數預設值 (環保局10秒 / 交通動態違規15秒與30秒 / 逼車存證10秒)
+  static const List<int> quickTrimPresets = <int>[10, 15, 30, 10];
 
   /// 執行或模擬硬體目標位元率壓縮進度流 (0.0 -> 1.0)
   /// 支援測試沙盒快速通道 (isTestMode = true)，徹底防止 Widget Test Pending Timer 死鎖
@@ -281,7 +281,7 @@ class VideoCompressionEngine {
 
     const int totalSteps = 20;
     for (int i = 1; i <= totalSteps; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 45));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       final double progress = (i / totalSteps).clamp(0.0, 1.0);
       yield progress;
     }
