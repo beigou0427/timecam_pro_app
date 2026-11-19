@@ -1,3 +1,4 @@
+import '../../core/native_hardware_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/taiwan_report_repository.dart';
@@ -90,6 +91,7 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
     final String city = portal.localizedCityName(isZh: widget.isZh);
 
     await Clipboard.setData(ClipboardData(text: url));
+    await NativeHardwareBridge.openOfficialPortalSafari(url);
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(

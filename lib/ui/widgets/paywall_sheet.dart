@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import '../../core/ariely_decoy_pricing_engine.dart';
 import '../../core/epa_reward_calculator_engine.dart';
 import '../../core/hormozi_grand_slam_offer_engine.dart';
-import '../../core/verna_flash_offer_engine.dart';
 
 enum ProPlanTier {
   b2bCrew(
@@ -196,7 +195,6 @@ class PaywallSheet extends StatefulWidget {
 class _PaywallSheetState extends State<PaywallSheet> {
   ProPlanTier _selectedTier = ProPlanTier.lifetime;
   bool _isProcessing = false;
-  final DateTime _flashOpenedAtUtc = DateTime.now().toUtc();
 
   Widget _buildLossAversionHeader() {
     final String reason =
@@ -237,11 +235,6 @@ class _PaywallSheetState extends State<PaywallSheet> {
   }
 
   Widget _buildAdvisoryStackCard() {
-    final FlashOfferState flash = VernaFlashOfferEngine.evaluateWindow(
-      triggeredAtUtc: _flashOpenedAtUtc,
-      nowUtc: DateTime.now().toUtc(),
-    );
-    final String timerText = VernaFlashOfferEngine.formatMmSs(flash.remainingSeconds);
     final String hormoziText = HormoziGrandSlamOfferEngine.buildValueStackHeadline(
       offerPriceNtd: 590,
       isZh: widget.isZh,
@@ -285,11 +278,11 @@ class _PaywallSheetState extends State<PaywallSheet> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: const BoxDecoration(
-                  color: Color(0xFFEF4444),
+                  color: Color(0xFF10B981),
                   borderRadius: BorderRadius.all(Radius.circular(6)),
                 ),
                 child: Text(
-                  '⏳ $timerText',
+                  widget.isZh ? '官方授權' : 'PRO',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
