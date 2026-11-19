@@ -28,7 +28,7 @@ class EpaRewardEstimate {
 class EpaRewardCalculatorEngine {
   const EpaRewardCalculatorEngine._();
   static const double withholdingTaxRate = 0.20;
-  static const int proLifetimePriceNtd = 290;
+  static const int proLifetimePriceNtd = 590;
   static const Map<String, int> _rates = <String, int>{'taipei_city': 30, 'new_taipei': 30, 'taoyuan': 20, 'hsinchu': 30, 'taichung': 25, 'tainan': 20, 'kaohsiung': 30};
 
   static EpaRewardEstimate calculateReward({required String cityId, required EpaViolationItem item}) {

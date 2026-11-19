@@ -161,8 +161,8 @@ class ActivationQuotaEngine {
     final String pct = savedPercentage.toStringAsFixed(0);
     if (quota.totalSavedMB > 0.0) {
       return isZh
-          ? '🔥 您剛才已體驗極速瘦身（累計已省下 ${quota.formattedTotalSavedMB}）！免費體驗券已用完，立即以 NT\$290 終身買斷，即可永久無限次匯出這支 $formattedEstimatedSize 檢舉影片（車號 $plateNumber，節省 $pct%）！'
-          : '🔥 You already saved ${quota.formattedTotalSavedMB} with your free pass! Unlock Pro Lifetime (\$9.99) to export this $formattedEstimatedSize clip (Plate $plateNumber, -$pct%) and enjoy unlimited exports!';
+          ? '🔥 您剛才已體驗極速瘦身（累計已省下 ${quota.formattedTotalSavedMB}）！免費體驗券已用完，立即以 NT\$590 終身買斷，即可永久無限次匯出這支 $formattedEstimatedSize 檢舉影片（車號 $plateNumber，節省 $pct%）！'
+          : '🔥 You already saved ${quota.formattedTotalSavedMB} with your free pass! Unlock Pro Lifetime (\$19.99) to export this $formattedEstimatedSize clip (Plate $plateNumber, -$pct%) and enjoy unlimited exports!';
     }
     return isZh
         ? '⚠️ 您的 $formattedEstimatedSize 檢舉影片（車號 $plateNumber，節省 $pct% 容量）已精算就緒！立即解鎖 Pro 即可一鍵壓縮匯出並趕在 7 日期限內送件。'

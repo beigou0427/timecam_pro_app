@@ -25,13 +25,15 @@ class StorekitIapService {
   }
 
   static StreamSubscription<Object>? _sub;
+  static VoidCallback? _onOk;
   static void bind(VoidCallback onOk) {
+    _onOk = onOk;
     if (isTest || _sub is Object) return;
     final i = InAppPurchase.instance;
     _sub = i.purchaseStream.listen((ls) async {
     for (final d in ls) { final s = d.status;
-      if (s == PurchaseStatus.purchased) onOk();
-      if (s == PurchaseStatus.restored) onOk();
+      if (s == PurchaseStatus.purchased) _onOk?.call();
+      if (s == PurchaseStatus.restored) _onOk?.call();
       if (d.pendingCompletePurchase) {
         await i.completePurchase(d);}}});}
   static Future<String?> restore() async {
@@ -39,4 +41,5 @@ class StorekitIapService {
     final i = InAppPurchase.instance;
     if (await i.isAvailable()) {
       await i.restorePurchases(); return null;}
-    return 'Store Unavailable';}}
+    return 'Store Unavailable';}
+  static Future<String?> go(bool r, String id) => r ? restore() : buy(id);}
