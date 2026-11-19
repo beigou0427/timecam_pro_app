@@ -31,6 +31,8 @@ import SafariServices
     channel.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
       guard let self = self else { return }
       switch call.method {
+      case "captureRealCameraPhoto":
+        self.handleCapturePhoto(result: result)
       case "getLiveGpsAddress":
         self.handleGetLiveGpsAddress(result: result)
       case "pickVideoFromLibrary":
@@ -77,6 +79,16 @@ import SafariServices
   }
 
   // 1. 真實 iPhone GPS 座標與台灣中文路名門牌反查 (CoreLocation + CLGeocoder)
+    private var pendingCameraResult: FlutterResult?
+  private func handleCapturePhoto(result: @escaping FlutterResult) {
+    guard let rootVC = activeRootViewController() else { result(nil); return }
+    if !UIImagePickerController.isSourceTypeAvailable(.camera) { result(nil); return }
+    pendingCameraResult = result
+    let picker = UIImagePickerController()
+    picker.sourceType = .camera
+    picker.delegate = self
+    rootVC.present(picker, animated: true)
+  }
   private func handleGetLiveGpsAddress(result: @escaping FlutterResult) {
     if locationManager == nil {
       locationManager = CLLocationManager()
@@ -143,6 +155,14 @@ import SafariServices
 
   func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
     picker.dismiss(animated: true)
+        if let photoCb = pendingCameraResult {
+      pendingCameraResult = nil
+      if let image = info[.originalImage] as? UIImage,
+         let data = image.jpegData(compressionQuality: 0.85) {
+        photoCb(FlutterStandardTypedData(bytes: data))
+      } else { photoCb(nil) }
+      return
+    }
     guard let cb = pendingVideoPickResult else { return }
     pendingVideoPickResult = nil
 
@@ -167,6 +187,10 @@ import SafariServices
 
   func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
     picker.dismiss(animated: true)
+        if let cb = pendingCameraResult {
+      pendingCameraResult = nil
+      cb(nil)
+    }
     if let cb = pendingVideoPickResult {
       pendingVideoPickResult = nil
       cb(nil)

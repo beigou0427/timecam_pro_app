@@ -118,6 +118,7 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
   bool _isRecording = false;
   int _recordingSeconds = 0;
   bool _showGridLines = true;
+  Uint8List? _cameraPhotoBytes;
   double _watermarkOpacity = 0.88;
 
   @override
@@ -220,6 +221,13 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
       final Uint8List pngBytes = byteData.buffer.asUint8List();
       await NativeHardwareBridge.saveWatermarkPhotoBytes(pngBytes);
     } catch (_) {}
+  }
+    Future<void> _openRealCamera() async {
+    final b = await NativeHardwareBridge
+      .captureRealCameraPhoto();
+    if (b != null && mounted) {
+      setState(() => _cameraPhotoBytes = b);
+    }
   }
   void _handleTriggerCapture() {
     HapticFeedback.heavyImpact();
@@ -411,6 +419,9 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
+        image: _cameraPhotoBytes == null ? null
+            : DecorationImage(image: MemoryImage(
+                _cameraPhotoBytes!), fit: BoxFit.cover),
                           color: const Color(0xFF1E293B),
                           borderRadius:
                               const BorderRadius.all(Radius.circular(12)),
@@ -691,6 +702,18 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                     child: Row(
                       children: <Widget>[
                         Padding(
+    padding: const EdgeInsets.only(right: 6),
+    child: ActionChip(
+      key: const Key('real_camera_btn'),
+      backgroundColor: const Color(0xFFF59E0B),
+      visualDensity: VisualDensity.compact,
+      label: Text(widget.isZh ? '相機實景' : 'Live Cam',
+        style: const TextStyle(color: Color(0xFF121212),
+          fontSize: 11.5, fontWeight: FontWeight.w900)),
+      onPressed: _openRealCamera,
+    ),
+  ),
+  Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: ActionChip(
                             key: const Key('live_gps_sync_btn'),
