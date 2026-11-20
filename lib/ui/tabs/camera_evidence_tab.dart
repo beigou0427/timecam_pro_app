@@ -806,39 +806,14 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
             ),
             const SizedBox(height: 16),
             // 中央光學車牌對焦準星 HUD
-            if (_showGridLines)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.all(Radius.circular(10)),
-                  border: Border.all(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
-                  ),
-                ),
-                child: Column(
-                  children: <Widget>[
-                    const Icon(
-                      Icons.center_focus_strong_rounded,
-                      color: Color(0xFFF59E0B),
-                      size: 28,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.isZh
-                          ? '車牌/案場光學銳利化對焦區 (AF-C)'
-                          : 'License Plate Optical Focus Zone (AF-C)',
-                      style: const TextStyle(
-                        color: Color(0xFFCBD5E1),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            if (_showGridLines) Container(padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+      borderRadius: const BorderRadius.all(Radius.circular(4))), child: Column(children: <Widget>[
+      Text(_cameraPhotoBytes == null ? "SYSTEM ARMED" : "IMAGE CAPTURED", style: const TextStyle(
+      color: Color(0xFFF59E0B), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2)),
+      const SizedBox(height: 4), Text(_cameraPhotoBytes == null ? "SENSOR READY // AF-C" : "LENS DATA LOCKED",
+      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800, fontFamily: "monospace"))
+      ])),
             const SizedBox(height: 16),
             // 底部即時浮水印疊加預覽
             _buildLiveWatermarkOverlay(snap),
