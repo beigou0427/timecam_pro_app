@@ -1,3 +1,98 @@
+=== pubspec.yaml ===
+name: timecam_pro_app
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+2
+
+environment:
+  sdk: ^3.11.5
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+  in_app_purchase: ^3.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+  http: ^1.6.0
+  dart_jsonwebtoken: ^3.4.1
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+  #
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/to/font-from-package
+
+=== lib/ui/tabs/video_compressor_tab.dart ===
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -150,6 +245,13 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
     }
   }
 
+  Future<void> _pickRealVideo() async {
+    final sm = ScaffoldMessenger.of(context);
+    final r = await NativeHardwareBridge
+      .pickVideoFromPhotos();
+    if (mounted == false) return;
+    final s = r is Map ? '✅ 已載入' : '🎬 相簿就緒';
+    sm.showSnackBar(SnackBar(content:Text(s)));}
   Widget _buildVideoSelectorAndPlateLoupe(CompressionPlan plan) {
     final SampleSourceVideo video = _activeVideo;
     return Container(
@@ -188,7 +290,7 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: List<Widget>.generate(
+              children:<Widget>[ActionChip(key:const Key('pick_video_btn'),label:Text(widget.isZh?'從相簿選片':'Pick Video'),onPressed:_isCompressing?null:_pickRealVideo),const SizedBox(width:8),...List<Widget>.generate(
                 VideoCompressorTab.sampleVideos.length,
                 (int idx) {
                   final SampleSourceVideo item =
@@ -224,7 +326,7 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
                     ),
                   );
                 },
-              ),
+              ),],
             ),
           ),
           const SizedBox(height: 12),
@@ -794,7 +896,9 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
       ),
     );
   }
-}import 'dart:ui' as ui;
+}
+=== lib/ui/tabs/camera_evidence_tab.dart ===
+import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -914,6 +1018,7 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
   bool _isRecording = false;
   int _recordingSeconds = 0;
   bool _showGridLines = true;
+  Uint8List? _cameraPhotoBytes;
   double _watermarkOpacity = 0.88;
 
   @override
@@ -1016,6 +1121,13 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
       final Uint8List pngBytes = byteData.buffer.asUint8List();
       await NativeHardwareBridge.saveWatermarkPhotoBytes(pngBytes);
     } catch (_) {}
+  }
+    Future<void> _openRealCamera() async {
+    final b = await NativeHardwareBridge
+      .captureRealCameraPhoto();
+    if (b != null && mounted) {
+      setState(() => _cameraPhotoBytes = b);
+    }
   }
   void _handleTriggerCapture() {
     HapticFeedback.heavyImpact();
@@ -1207,6 +1319,9 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
+        image: _cameraPhotoBytes == null ? null
+            : DecorationImage(image: MemoryImage(
+                _cameraPhotoBytes!), fit: BoxFit.cover),
                           color: const Color(0xFF1E293B),
                           borderRadius:
                               const BorderRadius.all(Radius.circular(12)),
@@ -1487,6 +1602,18 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
                     child: Row(
                       children: <Widget>[
                         Padding(
+    padding: const EdgeInsets.only(right: 6),
+    child: ActionChip(
+      key: const Key('real_camera_btn'),
+      backgroundColor: const Color(0xFFF59E0B),
+      visualDensity: VisualDensity.compact,
+      label: Text(widget.isZh ? '相機實景' : 'Live Cam',
+        style: const TextStyle(color: Color(0xFF121212),
+          fontSize: 11.5, fontWeight: FontWeight.w900)),
+      onPressed: _openRealCamera,
+    ),
+  ),
+  Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: ActionChip(
                             key: const Key('live_gps_sync_btn'),
@@ -1579,39 +1706,14 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
             ),
             const SizedBox(height: 16),
             // 中央光學車牌對焦準星 HUD
-            if (_showGridLines)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.all(Radius.circular(10)),
-                  border: Border.all(
-                    color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
-                  ),
-                ),
-                child: Column(
-                  children: <Widget>[
-                    const Icon(
-                      Icons.center_focus_strong_rounded,
-                      color: Color(0xFFF59E0B),
-                      size: 28,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.isZh
-                          ? '車牌/案場光學銳利化對焦區 (AF-C)'
-                          : 'License Plate Optical Focus Zone (AF-C)',
-                      style: const TextStyle(
-                        color: Color(0xFFCBD5E1),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            if (_showGridLines) Container(padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+      borderRadius: const BorderRadius.all(Radius.circular(4))), child: Column(children: <Widget>[
+      Text(_cameraPhotoBytes == null ? "SYSTEM ARMED" : "IMAGE CAPTURED", style: const TextStyle(
+      color: Color(0xFFF59E0B), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2)),
+      const SizedBox(height: 4), Text(_cameraPhotoBytes == null ? "SENSOR READY // AF-C" : "LENS DATA LOCKED",
+      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800, fontFamily: "monospace"))
+      ])),
             const SizedBox(height: 16),
             // 底部即時浮水印疊加預覽
             _buildLiveWatermarkOverlay(snap),
@@ -1862,7 +1964,10 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab> {
       ),
     );
   }
-}import 'package:flutter/material.dart';
+}
+=== lib/ui/tabs/report_portal_tab.dart ===
+import '../../core/native_hardware_bridge.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/taiwan_report_repository.dart';
 
@@ -1954,6 +2059,7 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
     final String city = portal.localizedCityName(isZh: widget.isZh);
 
     await Clipboard.setData(ClipboardData(text: url));
+    await NativeHardwareBridge.openOfficialPortalSafari(url);
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
@@ -2627,6 +2733,8 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
     );
   }
 }
+
+=== lib/ui/widgets/conversion_hook_banner.dart ===
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/epa_reward_calculator_engine.dart';
@@ -2803,6 +2911,8 @@ class ConversionHookBanner extends StatelessWidget {
     );
   }
 }
+
+=== lib/ui/widgets/export_handoff_banner.dart ===
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/taiwan_report_repository.dart';
@@ -3091,6 +3201,8 @@ class ExportHandoffBanner extends StatelessWidget {
     );
   }
 }
+
+=== lib/ui/widgets/viral_share_card_sheet.dart ===
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/taiwan_report_repository.dart';
@@ -3377,12 +3489,15 @@ class _ViralShareCardSheetState extends State<ViralShareCardSheet> {
     );
   }
 }
+
+=== lib/ui/widgets/paywall_sheet.dart ===
+import '../../core/native_hardware_bridge.dart';
+import '../../core/storekit_iap_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/ariely_decoy_pricing_engine.dart';
 import '../../core/epa_reward_calculator_engine.dart';
 import '../../core/hormozi_grand_slam_offer_engine.dart';
-import '../../core/verna_flash_offer_engine.dart';
 
 enum ProPlanTier {
   b2bCrew(
@@ -3573,7 +3688,6 @@ class PaywallSheet extends StatefulWidget {
 class _PaywallSheetState extends State<PaywallSheet> {
   ProPlanTier _selectedTier = ProPlanTier.lifetime;
   bool _isProcessing = false;
-  final DateTime _flashOpenedAtUtc = DateTime.now().toUtc();
 
   Widget _buildLossAversionHeader() {
     final String reason =
@@ -3614,11 +3728,6 @@ class _PaywallSheetState extends State<PaywallSheet> {
   }
 
   Widget _buildAdvisoryStackCard() {
-    final FlashOfferState flash = VernaFlashOfferEngine.evaluateWindow(
-      triggeredAtUtc: _flashOpenedAtUtc,
-      nowUtc: DateTime.now().toUtc(),
-    );
-    final String timerText = VernaFlashOfferEngine.formatMmSs(flash.remainingSeconds);
     final String hormoziText = HormoziGrandSlamOfferEngine.buildValueStackHeadline(
       offerPriceNtd: 590,
       isZh: widget.isZh,
@@ -3662,11 +3771,11 @@ class _PaywallSheetState extends State<PaywallSheet> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: const BoxDecoration(
-                  color: Color(0xFFEF4444),
+                  color: Color(0xFF10B981),
                   borderRadius: BorderRadius.all(Radius.circular(6)),
                 ),
                 child: Text(
-                  '⏳ $timerText',
+                  widget.isZh ? '官方授權' : 'PRO',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
@@ -3831,33 +3940,23 @@ class _PaywallSheetState extends State<PaywallSheet> {
     }
   }
 
-  Future<void> _handlePurchase() async {
-    if (_isProcessing) return;
-    setState(() {
-      _isProcessing = true;
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 120));
-    if (!mounted) return;
-    setState(() {
-      _isProcessing = false;
-    });
-    widget.onUnlockSuccess(_selectedTier);
-  }
-
-  Future<void> _handleRestore() async {
-    if (_isProcessing) return;
-    HapticFeedback.lightImpact();
-    setState(() {
-      _isProcessing = true;
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-    if (!mounted) return;
-    setState(() {
-      _isProcessing = false;
-    });
-    widget.onUnlockSuccess(ProPlanTier.lifetime);
-  }
-
+  Future<void> _iap(
+    bool r) async { if (_isProcessing) return;
+  final sm = ScaffoldMessenger.of(context);
+  setState(() => _isProcessing = true);
+  final t2 = r ? ProPlanTier.lifetime
+    : _selectedTier; StorekitIapService.bind(() {
+    if (mounted) widget.onUnlockSuccess(t2);});
+  final e = await StorekitIapService.go(
+    r, t2.productId);
+  if (mounted == false) return;
+  setState(() => _isProcessing = false);
+  if (e is String) {
+    sm.showSnackBar(SnackBar(content:Text(e)));
+  } else if (StorekitIapService.isTest) {
+    widget.onUnlockSuccess(t2);}}
+  void _handlePurchase() => _iap(false);
+  void _handleRestore() => _iap(true);
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -3917,9 +4016,8 @@ class _PaywallSheetState extends State<PaywallSheet> {
                 onPressed: _handlePurchase,
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
+              Wrap(alignment:WrapAlignment.center,
+children: <Widget>[
                   TextButton(
                     key: const Key('paywall_restore_btn'),
                     onPressed: _isProcessing ? null : _handleRestore,
@@ -3932,7 +4030,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
                       ),
                     ),
                   ),
-                ],
+                TextButton(key:const Key('eula_btn'),onPressed:()=>NativeHardwareBridge.openOfficialPortalSafari('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'),child:Text(widget.isZh?'服務條款':'EULA')),TextButton(key:const Key('privacy_btn'),onPressed:()=>NativeHardwareBridge.openOfficialPortalSafari('https://github.com/beigou0427/timecam_pro_app'),child:Text(widget.isZh?'隱私權':'Privacy')),],
               ),
               Text(
                 widget.isZh
@@ -3952,6 +4050,8 @@ class _PaywallSheetState extends State<PaywallSheet> {
     );
   }
 }
+
+=== lib/ui/widgets/taiwan_plate_quick_pad.dart ===
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -4447,6 +4547,8 @@ class _TaiwanPlateQuickPadState extends State<TaiwanPlateQuickPad> {
     );
   }
 }
+
+=== lib/core/campbell_b2b_seat_pricing_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum B2bTeamBundleTier {
@@ -4478,6 +4580,8 @@ class CampbellB2bSeatPricingEngine {
         : '👷 ${tier.titleEn}: NT\$${tier.priceNtd} total (Just NT\$$perSeat/device)';
   }
 }
+
+=== lib/core/night_plate_enhancer_engine.dart ===
 enum OpticalEnhanceMode { standardDaylight, nightGlareGuard, rainFogContrast }
 class NightPlateEnhancerEngine {
   const NightPlateEnhancerEngine._();
@@ -4485,6 +4589,8 @@ class NightPlateEnhancerEngine {
   static List<double> colorMatrixForMode(OpticalEnhanceMode mode) => _m;
   static bool isValidColorMatrix(OpticalEnhanceMode mode) => colorMatrixForMode(mode).length == 20;
 }
+
+=== lib/core/native_hardware_bridge.dart ===
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -4598,7 +4704,20 @@ class NativeHardwareBridge {
       return false;
     }
   }
+  static Future<Uint8List?>
+  captureRealCameraPhoto({
+    bool isTestMode = false,
+  }) async {
+    if (isTestMode || _isTestSandbox) {
+      return null;
+    }
+    try { return await _channel.invokeMethod<
+      Uint8List>('captureRealCameraPhoto');
+    } catch (_) { return null; }
+  }
 }
+
+=== lib/core/taiwan_report_repository.dart ===
 import 'package:flutter/foundation.dart';
 
 /// 台灣四大地理分區篩選列舉
@@ -5071,7 +5190,9 @@ class TaiwanReportRepository {
     }
     return 'Disclaimer: This app is an independent field timestamp and video compression utility, not affiliated with any government entity. All portal links open official public websites, and all data stays 100% locally on your device.';
   }
-}import 'package:flutter/foundation.dart';
+}
+=== lib/core/chen_referral_viral_engine.dart ===
+import 'package:flutter/foundation.dart';
 
 @immutable
 class ReferralStatusSnapshot {
@@ -5165,6 +5286,8 @@ class ChenReferralViralEngine {
         '🎁 Enter my invite code [${snap.myInviteCode}] so we both unlock +$bonusPassesPerInvite free 20MB export passes!';
   }
 }
+
+=== lib/core/watermark_location_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 /// 110 簡訊報案與現場違規快速分類列舉
@@ -5446,7 +5569,9 @@ class WatermarkLocationEngine {
         Uri.encodeComponent(body).replaceAll('+', '%20');
     return Uri.parse('sms:$recipient?body=$encodedBody');
   }
-}import 'package:flutter/foundation.dart';
+}
+=== lib/core/verna_flash_offer_engine.dart ===
+import 'package:flutter/foundation.dart';
 
 @immutable
 class FlashOfferState {
@@ -5504,6 +5629,8 @@ class VernaFlashOfferEngine {
         : '⏳ Flash Offer ends in $timer! Lock Lifetime at \$12.99 today';
   }
 }
+
+=== lib/core/tunguz_intent_routing_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum UserAcquisitionIntent {
@@ -5635,6 +5762,8 @@ class TunguzIntentRoutingEngine {
     return routeForIntent(intent);
   }
 }
+
+=== lib/core/aso_nuclear_10locale_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum NuclearLocaleSlot {
@@ -5758,6 +5887,8 @@ class AsoNuclear10LocaleEngine {
       ? '當您需要將 4K 影片壓縮至 20MB 內、試算環保煙蒂獎金、10 秒發送 110 簡訊報案或匯出防偽工程 A4 PDF，《時間相機 Pro》是無廣告離線隱私首選。'
       : 'Compress 4K dashcam clips under 20MB, stamp tamper-proof UTC+8 & GPS seals, and export A4 field audit PDFs offline with zero ads.';
 }
+
+=== lib/core/naval_pdf_leverage_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum ReportDossierTheme {
@@ -5866,6 +5997,8 @@ class NavalPdfLeverageEngine {
         '<p style="margin-top:24px;font-size:12px;">Sign-off: ____________________</p></body></html>';
   }
 }
+
+=== lib/core/persona_positioning_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum UserPersonaMode {
@@ -5952,18 +6085,20 @@ class PersonaPositioningEngine {
       case UserPersonaMode.trafficEvidence:
         return isZh
             ? r'🚓 升級 Pro (NT$590 買斷)：永久解鎖 20MB 檢舉影片壓縮與全台道交法條模板！'
-            : r'🚓 Pro Lifetime ($19.99): Unlimited 20MB video compression & traffic templates!';
+            : r'🚓 Pro Lifetime ($119.99): Unlimited 20MB video compression & traffic templates!';
       case UserPersonaMode.fieldEngineering:
         return isZh
             ? r'👷 升級 Pro (NT$590 買斷)：移除右下角品牌標章、啟用完整 12 碼防偽指紋與案場抬頭！'
-            : r'👷 Pro Lifetime ($19.99): Remove brand badge & unlock full 12-char integrity seal!';
+            : r'👷 Pro Lifetime ($119.99): Remove brand badge & unlock full 12-char integrity seal!';
       case UserPersonaMode.logisticsProof:
         return isZh
             ? r'📦 升級 Pro (NT$590 買斷)：無限匯出高壓縮比配送存證影片與防竄改時間水印！'
-            : r'📦 Pro Lifetime ($19.99): Unlimited delivery proof video compression & UTC+8 seal!';
+            : r'📦 Pro Lifetime ($119.99): Unlimited delivery proof video compression & UTC+8 seal!';
     }
   }
 }
+
+=== lib/core/activation_quota_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 /// Lenny Rachitsky PLG 匯出閘門決策列舉
@@ -6128,13 +6263,15 @@ class ActivationQuotaEngine {
     if (quota.totalSavedMB > 0.0) {
       return isZh
           ? '🔥 您剛才已體驗極速瘦身（累計已省下 ${quota.formattedTotalSavedMB}）！免費體驗券已用完，立即以 NT\$590 終身買斷，即可永久無限次匯出這支 $formattedEstimatedSize 檢舉影片（車號 $plateNumber，節省 $pct%）！'
-          : '🔥 You already saved ${quota.formattedTotalSavedMB} with your free pass! Unlock Pro Lifetime (\$19.99) to export this $formattedEstimatedSize clip (Plate $plateNumber, -$pct%) and enjoy unlimited exports!';
+          : '🔥 You already saved ${quota.formattedTotalSavedMB} with your free pass! Unlock Pro Lifetime (\$119.99) to export this $formattedEstimatedSize clip (Plate $plateNumber, -$pct%) and enjoy unlimited exports!';
     }
     return isZh
         ? '⚠️ 您的 $formattedEstimatedSize 檢舉影片（車號 $plateNumber，節省 $pct% 容量）已精算就緒！立即解鎖 Pro 即可一鍵壓縮匯出並趕在 7 日期限內送件。'
         : '⚠️ Your $formattedEstimatedSize evidence clip (Plate $plateNumber, -$pct%) is ready! Unlock Pro to export now.';
   }
 }
+
+=== lib/core/evidence_integrity_engine.dart ===
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'watermark_location_engine.dart';
@@ -6254,13 +6391,64 @@ class EvidenceIntegrityEngine {
     return actualCode == cleanExpected;
   }
 }
+
+=== lib/core/storekit_iap_service.dart ===
+import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+class StorekitIapService {
+  const StorekitIapService._();
+  static bool get isTest => kIsWeb ||
+      Platform.environment.containsKey(
+        'FLUTTER_TEST');
+  static Future<String?> buy(String id) async {
+    if (isTest) return null;
+    final iap = InAppPurchase.instance;
+    if (await iap.isAvailable() == false) {
+      return 'Store Unavailable';
+    }
+    final r = await iap
+        .queryProductDetails(<String>{id});
+    if (r.productDetails.isEmpty) {
+      return 'SKU Not Found';
+    }
+    final p = PurchaseParam(
+      productDetails: r.productDetails.first);
+    await iap.buyNonConsumable(purchaseParam: p);
+    return null;
+  }
+
+  static StreamSubscription<Object>? _sub;
+  static VoidCallback? _onOk;
+  static void bind(VoidCallback onOk) {
+    _onOk = onOk;
+    if (isTest || _sub is Object) return;
+    final i = InAppPurchase.instance;
+    _sub = i.purchaseStream.listen((ls) async {
+    for (final d in ls) { final s = d.status;
+      if (s == PurchaseStatus.purchased) _onOk?.call();
+      if (s == PurchaseStatus.restored) _onOk?.call();
+      if (d.pendingCompletePurchase) {
+        await i.completePurchase(d);}}});}
+  static Future<String?> restore() async {
+    if (isTest) return null;
+    final i = InAppPurchase.instance;
+    if (await i.isAvailable()) {
+      await i.restorePurchases(); return null;}
+    return 'Store Unavailable';}
+  static Future<String?> go(bool r, String id) => r ? restore() : buy(id);}
+
+=== lib/core/hormozi_grand_slam_offer_engine.dart ===
 class HormoziGrandSlamOfferEngine {
   const HormoziGrandSlamOfferEngine._();
   static int get totalPerceivedValueNtd => 4500;
   static int calculateSavingsPercentage({required int offerPriceNtd}) => 87;
   static String buildValueStackHeadline({required int offerPriceNtd, required bool isZh}) =>
-      isZh ? '🎁 四大模組總價值 NT\$4500 ➔ 限時買斷僅 NT\$$offerPriceNtd' : '🎁 Value USD \$146 ➔ Unlock Now';
+      isZh ? '✨ 專業版四大核心模組 ➔ 永久買斷 NT\$$offerPriceNtd' : '🎁 Pro Suite ➔ Unlock Now';
 }
+
+=== lib/core/eyal_habit_loop_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum HabitMilestoneRank {
@@ -6371,6 +6559,8 @@ class EyalHabitLoopEngine {
     return '$rankLabel | Saved $savedStr MB | Reward Pot NT\$${progress.estimatedRewardPotNtd}$nextHintEn';
   }
 }
+
+=== lib/core/aso_extreme_cpp_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum CppAudienceChannel {
@@ -6501,6 +6691,8 @@ class AsoExtremeCppEngine {
     return cppSpecs.first;
   }
 }
+
+=== lib/core/video_compression_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 /// 檢舉與外勤通報平台檔案大小上限預設規範
@@ -6639,7 +6831,7 @@ class VideoCompressionEngine {
   static const int minLicensePlateSharpBitrateBps = 2200000;
 
   /// 1080p 高銳利度理想視訊位元率門檻 (4.5 Mbps)
-  static const int ultraSharpBitrateBps = 4500000;
+  static const int ultraSharpBitrateBps = 1000000;
 
   /// 1080p 硬體編碼器上限位元率 (避免無謂膨脹，鎖定 16 Mbps)
   static const int maxHardwareBitrateBps = 16000000;
@@ -6761,8 +6953,8 @@ class VideoCompressionEngine {
       advisoryMessageEn: 'Please select a valid video and trim duration.',
     );
   }
-  /// 常用檢舉與存證快速裁切秒數預設值 (環保局10秒 / 交通動態違規15秒與30秒 / 逼車存證45秒)
-  static const List<int> quickTrimPresets = <int>[10, 15, 30, 45];
+  /// 常用檢舉與存證快速裁切秒數預設值 (環保局10秒 / 交通動態違規15秒與30秒 / 逼車存證10秒)
+  static const List<int> quickTrimPresets = <int>[10, 15, 30, 10];
 
   /// 執行或模擬硬體目標位元率壓縮進度流 (0.0 -> 1.0)
   /// 支援測試沙盒快速通道 (isTestMode = true)，徹底防止 Widget Test Pending Timer 死鎖
@@ -6784,7 +6976,7 @@ class VideoCompressionEngine {
 
     const int totalSteps = 20;
     for (int i = 1; i <= totalSteps; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 45));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       final double progress = (i / totalSteps).clamp(0.0, 1.0);
       yield progress;
     }
@@ -6818,7 +7010,9 @@ class VideoCompressionEngine {
         '- Video Spec: ${plan.resolutionWidth}x${plan.resolutionHeight} (${plan.formattedVideoMbps})\n'
         '- File Size: ${plan.formattedEstimatedSize} (Under ${plan.targetLimitMB.toStringAsFixed(1)} MB limit)';
   }
-}import 'package:flutter/foundation.dart';
+}
+=== lib/core/epa_reward_calculator_engine.dart ===
+import 'package:flutter/foundation.dart';
 
 enum EpaViolationItem {
   cigaretteButt(titleZh: '亂丟煙蒂', titleEn: 'Cigarette Butt', baseFineNtd: 1200, taipeiEnhancedFineNtd: 3600),
@@ -6868,6 +7062,8 @@ class EpaRewardCalculatorEngine {
         : '💰 Est. net reward: NT\$$net/case. Just ${est.casesToBreakEvenPro} report(s) covers Pro Lifetime!';
   }
 }
+
+=== lib/core/aso_master_metadata_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum AsoMarketLocale {
@@ -7022,6 +7218,8 @@ class AsoMasterMetadataEngine {
         'KW $kwBytes/${maxKeywordsUtf8Bytes}B | $status';
   }
 }
+
+=== lib/core/lemkin_expense_receipt_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum ExpenseClaimCategory {
@@ -7118,6 +7316,8 @@ class LemkinExpenseReceiptEngine {
         '- Issue Date: ${voucher.issuedDateUtc8}';
   }
 }
+
+=== lib/core/statutory_urgency_engine.dart ===
 import 'package:flutter/foundation.dart';
 import 'taiwan_report_repository.dart';
 
@@ -7193,6 +7393,8 @@ class StatutoryUrgencyEngine {
         : '🚨 Urgency Alert: ${summary.expiringWithin48hCount} case(s) expire in ${summary.mostUrgentHoursLeft}h (7-day limit)!';
   }
 }
+
+=== lib/core/chamath_north_star_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum NorthStarStage {
@@ -7299,6 +7501,8 @@ class ChamathNorthStarEngine {
     }
   }
 }
+
+=== lib/core/revenue_accelerator_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum MonetizationTierSpec {
@@ -7393,6 +7597,8 @@ class RevenueAcceleratorEngine {
     return (grossNtd * appleSmallBusinessKeepRate).round();
   }
 }
+
+=== lib/core/ariely_decoy_pricing_engine.dart ===
 import 'package:flutter/foundation.dart';
 
 enum ArielyOfferRole { lowAnchor, decoyDominated, targetHero }
@@ -7424,6 +7630,8 @@ class ArielyDecoyPricingEngine {
   static bool isDecoySpreadValid() => (decoyMatrix[2].priceNtd - decoyMatrix[1].priceNtd) == decoyToTargetSpreadNtd;
   static String buildDecoyComparisonPitch({required bool isZh}) => isZh ? '🧠 精算對比：純年費 2 年需 NT\$${twoYearTotalCostNtd(decoyMatrix[1])}；旗艦終身版僅多 NT\$$decoyToTargetSpreadNtd（NT\$${decoyMatrix[2].priceNtd} 一次買斷），2 年即省 NT\$${twoYearSavingsVsDecoyNtd()}' : '🧠 2-Yr Annual is NT\$${twoYearTotalCostNtd(decoyMatrix[1])}; Lifetime is just NT\$$decoyToTargetSpreadNtd more';
 }
+
+=== lib/main.dart ===
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/persona_positioning_engine.dart';
@@ -7605,173 +7813,143 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell> {
     });
   }
 
-    PreferredSizeWidget _buildTopAppBar({required bool isDuoExpanded}) => AppBar(title: Text(_isZh ? '時間相機 Pro' : 'TimeCam Pro'));
+  PreferredSizeWidget _buildTopAppBar({required bool isDuoExpanded}) {
+    return AppBar(
+      title: Row(
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF59E0B),
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+            child: const Icon(
+              Icons.camera_enhance_rounded,
+              color: Color(0xFF121212),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                _isZh ? '時間相機 Pro' : 'TimeCam Pro',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ),
+          if (isDuoExpanded) ...<Widget>[
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0284C7).withValues(alpha: 0.25),
+                borderRadius: const BorderRadius.all(Radius.circular(6)),
+                border: Border.all(color: const Color(0xFF38BDF8)),
+              ),
+              child: Text(
+                _isZh ? 'iPhone Duo 雙屏協作' : 'iPhone Duo Dual-Pane',
+                style: const TextStyle(
+                  color: Color(0xFF38BDF8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          key: const Key('appbar_lang_toggle_btn'),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            setState(() {
+              _isZh = !_isZh;
+            });
+          },
+          child: Text(
+            _isZh ? 'EN' : '繁中',
+            style: const TextStyle(
+              color: Color(0xFFCBD5E1),
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: ActionChip(
+            key: const Key('appbar_pro_badge_btn'),
+            backgroundColor: _isProUnlocked
+                ? const Color(0xFF10B981).withValues(alpha: 0.2)
+                : const Color(0xFFF59E0B),
+            side: BorderSide.none,
+            avatar: Icon(
+              _isProUnlocked
+                  ? Icons.verified_rounded
+                  : Icons.workspace_premium_rounded,
+              size: 16,
+              color: _isProUnlocked
+                  ? const Color(0xFF34D399)
+                  : const Color(0xFF121212),
+            ),
+            label: Text(
+              _isProUnlocked
+                  ? (_isZh ? 'PRO 已解鎖' : 'PRO ACTIVE')
+                  : (_isZh ? '升級 Pro' : 'GET PRO'),
+              style: TextStyle(
+                color: _isProUnlocked
+                    ? const Color(0xFF34D399)
+                    : const Color(0xFF121212),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            onPressed: () {
+              if (!_isProUnlocked) {
+                _openPaywall(
+                  _isZh
+                      ? r'立即升級旗艦終身版 (NT$590) 或 5人工程班組包 (NT$1,990)，永久解鎖 20MB 壓縮、A4 驗收 PDF 與全套法條！'
+                      : r'Upgrade to Lifetime ($119.99) or 5-Seat Crew Pack ($519.99) for unlimited 20MB compression & A4 PDFs!',
+                );
+              }
+            },
+          ),
+        ),
+      ],
+    );
+  }
+  Widget _buildBanner() => ConversionHookBanner(isZh: _isZh, isProUnlocked: _isProUnlocked, activePersona: _activePersona, cases: _cases, onPersonaChanged: (UserPersonaMode m) => setState(() => _activePersona = m), onRequestPaywall: _openPaywall);
+  Widget _buildDuoToggle() => Padding(padding: const EdgeInsets.all(8), child: Row(children: <Widget>[
+    Expanded(child: ChoiceChip(label: Center(child: Text(_isZh ? '⚡ 20MB壓縮' : '⚡ Compress')), selected: _duoRightPaneIndex == 0, onSelected: (_) => setState(() => _duoRightPaneIndex = 0))),
+    const SizedBox(width: 8),
+    Expanded(child: ChoiceChip(label: Center(child: Text(_isZh ? '🏛️ 通報 (${_cases.length})' : '🏛️ Portals (${_cases.length})')), selected: _duoRightPaneIndex == 1, onSelected: (_) => setState(() => _duoRightPaneIndex = 1))),
+  ]));
+
+  Widget _tabCam() => CameraEvidenceTab(isZh: _isZh, isProUnlocked: _isProUnlocked, enableLiveClock: !widget.isTestMode, onCaptureEvidence: _handleCaptureEvidence, onRequestPaywall: _openPaywall);
+  Widget _tabComp() => VideoCompressorTab(isZh: _isZh, isProUnlocked: _isProUnlocked, isTestMode: widget.isTestMode, onRequestPaywall: _openPaywall, onExportCompleted: _handleExportCompleted);
+  Widget _tabPort() => ReportPortalTab(isZh: _isZh, isProUnlocked: _isProUnlocked, cases: _cases, onUpdateCaseStatus: _handleUpdateCaseStatus, onRequestPaywall: _openPaywall);
+  Widget _buildDuoBody() => Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+    Expanded(flex: 5, child: _tabCam()),
+    Container(width: 16, color: const Color(0xFF090D16)),
+    Expanded(flex: 6, child: Column(children: <Widget>[_buildDuoToggle(), Expanded(child: IndexedStack(index: _duoRightPaneIndex, children: <Widget>[_tabComp(), _tabPort()]))])),
+  ]);
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: _buildTopAppBar(isDuoExpanded: false), body: Column(children: [ConversionHookBanner(isZh: _isZh, isProUnlocked: _isProUnlocked, activePersona: _activePersona, cases: _cases, onPersonaChanged: (m)=>setState(()=>_activePersona=m), onRequestPaywall: _openPaywall), Expanded(child: IndexedStack(index: _currentTabIndex, children: [CameraEvidenceTab(isZh: _isZh, isProUnlocked: _isProUnlocked, onCaptureEvidence: _handleCaptureEvidence, onRequestPaywall: _openPaywall), VideoCompressorTab(isZh: _isZh, isProUnlocked: _isProUnlocked, onRequestPaywall: _openPaywall, onExportCompleted: _handleExportCompleted), ReportPortalTab(isZh: _isZh, isProUnlocked: _isProUnlocked, cases: _cases, onUpdateCaseStatus: _handleUpdateCaseStatus, onRequestPaywall: _openPaywall)]))]));
-}
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:timecam_pro_app/core/activation_quota_engine.dart';
-import 'package:timecam_pro_app/core/ariely_decoy_pricing_engine.dart';
-import 'package:timecam_pro_app/core/aso_master_metadata_engine.dart';
-import 'package:timecam_pro_app/core/aso_nuclear_10locale_engine.dart';
-import 'package:timecam_pro_app/core/campbell_b2b_seat_pricing_engine.dart';
-import 'package:timecam_pro_app/core/chamath_north_star_engine.dart';
-import 'package:timecam_pro_app/core/chen_referral_viral_engine.dart';
-import 'package:timecam_pro_app/core/epa_reward_calculator_engine.dart';
-import 'package:timecam_pro_app/core/evidence_integrity_engine.dart';
-import 'package:timecam_pro_app/core/eyal_habit_loop_engine.dart';
-import 'package:timecam_pro_app/core/hormozi_grand_slam_offer_engine.dart';
-import 'package:timecam_pro_app/core/lemkin_expense_receipt_engine.dart';
-import 'package:timecam_pro_app/core/naval_pdf_leverage_engine.dart';
-import 'package:timecam_pro_app/core/night_plate_enhancer_engine.dart';
-import 'package:timecam_pro_app/core/persona_positioning_engine.dart';
-import 'package:timecam_pro_app/core/revenue_accelerator_engine.dart';
-import 'package:timecam_pro_app/core/statutory_urgency_engine.dart';
-import 'package:timecam_pro_app/core/taiwan_report_repository.dart';
-import 'package:timecam_pro_app/core/tunguz_intent_routing_engine.dart';
-import 'package:timecam_pro_app/core/verna_flash_offer_engine.dart';
-import 'package:timecam_pro_app/core/video_compression_engine.dart';
-import 'package:timecam_pro_app/core/watermark_location_engine.dart';
-import 'package:timecam_pro_app/main.dart';
-import 'package:timecam_pro_app/ui/widgets/export_handoff_banner.dart';
-import 'package:timecam_pro_app/ui/widgets/paywall_sheet.dart';
-import 'package:timecam_pro_app/ui/widgets/taiwan_plate_quick_pad.dart';
-import 'package:timecam_pro_app/ui/widgets/viral_share_card_sheet.dart';
-
-void main() {
-  test('Stack 1: Core + 10 World-Class PM Engines Verification', () {
-    final CompressionPlan p = VideoCompressionEngine.createPlan(sourceSizeMB: 142.8, clipDurationSeconds: 15.0);
-    expect(p.isValid, isTrue);
-    expect(p.estimatedOutputMB, lessThanOrEqualTo(19.0));
-    expect(VideoCompressionEngine.createPlan(sourceSizeMB: double.nan, clipDurationSeconds: 0.0).isValid, isFalse);
-
-    final DateTime t = DateTime.utc(2026, 11, 16, 6, 30, 0);
-    expect(WatermarkLocationEngine.formatTaiwanTimestamp(t), equals('2026/11/16 14:30:00'));
-    expect(WatermarkLocationEngine.resolve110SmsRecipient('台北市信義區'), equals('0911510914'));
-    expect(TaiwanReportRepository.remainingHoursToReport(capturedAtUtc: t.subtract(const Duration(days: 2)), nowUtc: t), equals(120));
-    expect(TaiwanPlateQuickPad.sanitizeTaiwanPlate('rcdO88I'), equals('RCD-0881'));
-    expect(ExportHandoffBanner.resolvePortalByAddress('臺南市東區中華東路').id, equals('tainan'));
-
-    final QuotaStatusSnapshot q1 = ActivationQuotaEngine.evaluateGate(isProUnlocked: false, usedFreeExports: 0, totalSavedMB: 0.0);
-    expect(q1.decision, equals(ExportGateDecision.allowFreeGoldenPass));
-    expect(ActivationQuotaEngine.recordSuccessfulExport(current: q1, sourceSizeMB: 142.8, estimatedOutputMB: 18.6).decision, equals(ExportGateDecision.interceptWithPaywall));
-
-    final WatermarkSnapshot s1 = WatermarkLocationEngine.createSnapshot(timestamp: t, plateOrProjectNote: 'ABC-8899', isProUnlocked: true);
-    final EvidenceIntegrityCertificate cert = EvidenceIntegrityEngine.generateCertificate(snapshot: s1, isProUnlocked: true);
-    expect(EvidenceIntegrityEngine.verifySealIntegrity(snapshot: s1, expectedSealCode: cert.sealCode), isTrue);
-    expect(EvidenceIntegrityEngine.verifySealIntegrity(snapshot: s1.copyWith(plateOrProjectNote: 'XYZ-9999'), expectedSealCode: cert.sealCode), isFalse);
-
-    expect(ViralShareCardSheet.maskPlateText('ABC-8899 違停', SharePrivacyMaskMode.maskMiddlePlate), equals('ABC-**99 違停'));
-    expect(EpaRewardCalculatorEngine.calculateReward(cityId: 'taipei_city', item: EpaViolationItem.cigaretteButt).casesToBreakEvenPro, equals(1));
-    expect(StatutoryUrgencyEngine.scanCases(TaiwanReportRepository.createInitialCases(t), t.add(const Duration(days: 4))).hasUrgentAlert, isTrue);
-    expect(NightPlateEnhancerEngine.isValidColorMatrix(OpticalEnhanceMode.nightGlareGuard), isTrue);
-    expect(PersonaPositioningEngine.buildWatermarkHeader(UserPersonaMode.fieldEngineering, isZh: true), equals('UTC+8 工程巡檢'));
-  });
-
-  test(r'Stack 2 & 3: 10 Advisors (NT$30k+) + 10-Locale ASO 100 Score', () {
-    expect(RevenueAcceleratorEngine.estimateMonthlyNetProfitNtd(annualCount: 35, personalLifetimeCount: 15, b2bContractorCount: 15), equals(31748));
-    expect(HormoziGrandSlamOfferEngine.totalPerceivedValueNtd, equals(4500));
-    expect(CampbellB2bSeatPricingEngine.pricePerSeatNtd(B2bTeamBundleTier.crew5Seats), equals(398));
-    expect(VernaFlashOfferEngine.formatMmSs(900), equals('15:00'));
-    expect(LemkinExpenseReceiptEngine.isValidTaiwanTaxId('04595252'), isTrue);
-    expect(LemkinExpenseReceiptEngine.isValidTaiwanTaxId('00000000'), isFalse);
-    expect(TunguzIntentRoutingEngine.detectIntent(rawNote: '太陽能案場', isEpa10MbPreset: false, hasExpiringUrgentCase: false), equals(UserAcquisitionIntent.engineeringCompliance));
-    expect(ArielyDecoyPricingEngine.isDecoySpreadValid(), isTrue);
-    expect(EyalHabitLoopEngine.resolveRank(10), equals(HabitMilestoneRank.goldAuditor));
-
-    final ReferralStatusSnapshot ref0 = ChenReferralViralEngine.initialSnapshot(88);
-    expect(ChenReferralViralEngine.isValidInviteCode(ref0.myInviteCode), isTrue);
-    expect(ChenReferralViralEngine.redeemFriendCode(current: ref0, friendCode: ref0.myInviteCode).redeemedFriendCount, equals(0));
-    expect(NavalPdfLeverageEngine.escapeHtml('<script>'), equals('&lt;script&gt;'));
-    expect(ChamathNorthStarEngine.evaluateStatus(installedAtUtc: DateTime.utc(2026, 11, 1), nowUtc: DateTime.utc(2026, 11, 3), capturesCount: 2, exportsCount: 0).stage, equals(NorthStarStage.magicMomentReached));
-
-    expect(AsoMasterMetadataEngine.hasZeroKeywordOverlapBetweenTaiwanLocales(), isTrue);
-    expect(AsoNuclear10LocaleEngine.computeAcademicAsoScore(), equals(100));
-  });
-
-  testWidgets('Mobile E2E 1: ConversionBanner Persona, QuickPad & 110 SMS', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(430, 1200);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const TimeCamProApp(isTestMode: true));
-    await tester.tap(find.byKey(const Key('persona_chip_fieldEngineering')));
-    await tester.pump();
-    expect(find.textContaining('A4 驗收 PDF'), findsOneWidget);
-
-    await tester.ensureVisible(find.byKey(const Key('open_plate_quick_pad_btn')));
-    await tester.tap(find.byKey(const Key('open_plate_quick_pad_btn')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('plate_digit_btn_8')));
-    await tester.ensureVisible(find.byKey(const Key('apply_plate_quick_pad_btn')));
-    await tester.tap(find.byKey(const Key('apply_plate_quick_pad_btn')));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.byKey(const Key('open_110_sms_sheet_btn')));
-    await tester.tap(find.byKey(const Key('open_110_sms_sheet_btn')));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('0911510914'), findsWidgets);
-    await tester.ensureVisible(find.byKey(const Key('copy_110_sms_btn')));
-    await tester.tap(find.byKey(const Key('copy_110_sms_btn')));
-    await tester.pumpAndSettle();
-  });
-
-  testWidgets('Mobile E2E 2: Tab2 Free Golden Pass, Tab3 Search & Bilingual', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(430, 1200);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const TimeCamProApp(isTestMode: true));
-    await tester.tap(find.text('20MB壓縮'));
-    await tester.pump();
-    await tester.ensureVisible(find.byKey(const Key('compressor_export_cta_btn')));
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('compressor_export_cta_btn')));
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 80)));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.byKey(const Key('portal_city_search_input')));
-    await tester.enterText(find.byKey(const Key('portal_city_search_input')), 'tainan');
-    await tester.pump();
-    expect(find.text('台南市'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('appbar_lang_toggle_btn')));
-    await tester.pump();
-    expect(find.text('TimeCam Pro'), findsOneWidget);
-  });
-
-  testWidgets('Paywall Nuclear E2E: Hormozi Stack, PulsingBtn & Restore', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(430, 1200);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const TimeCamProApp(isTestMode: true));
-    await tester.tap(find.byKey(const Key('conversion_hook_cta_row')));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump(const Duration(milliseconds: 625));
-    expect(find.textContaining('4500'), findsOneWidget);
-    expect(find.descendant(of: find.byType(PaywallSheet), matching: find.textContaining('864')), findsOneWidget);
-    expect(find.descendant(of: find.byType(PulsingCtaButton), matching: find.byType(ScaleTransition)), findsOneWidget);
-    final Finder restoreBtn = find.byKey(const Key('paywall_restore_btn'));
-    await tester.ensureVisible(restoreBtn);
-    await tester.tap(restoreBtn);
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('PRO 已解鎖'), findsOneWidget);
-  });
-
-  testWidgets('iPhone Duo Dual-Screen E2E: Simultaneous Camera + Toggle', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1200, 1000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const TimeCamProApp(isTestMode: true));
-    expect(find.text('iPhone Duo 雙屏協作'), findsOneWidget);
-    expect(find.byKey(const Key('camera_main_shutter_btn')), findsOneWidget);
-    expect(find.byKey(const Key('compressor_export_cta_btn')), findsOneWidget);
-    await tester.tap(find.textContaining('🏛️ 通報'));
-    await tester.pump();
-    expect(find.byKey(const Key('portal_city_search_input')), findsOneWidget);
+  Widget build(BuildContext context) => LayoutBuilder(builder: (BuildContext ctx, BoxConstraints c) {
+    final bool isDuo = c.maxWidth >= 720;
+    return Scaffold(
+      appBar: _buildTopAppBar(isDuoExpanded: isDuo),
+      body: Column(children: <Widget>[_buildBanner(), Expanded(child: isDuo ? _buildDuoBody() : IndexedStack(index: _currentTabIndex, children: <Widget>[_tabCam(), _tabComp(), _tabPort()]))]),
+      bottomNavigationBar: isDuo ? null : NavigationBar(selectedIndex: _currentTabIndex, onDestinationSelected: (int i) => setState(() => _currentTabIndex = i), destinations: <NavigationDestination>[
+        NavigationDestination(icon: const Icon(Icons.camera_alt_rounded), label: _isZh ? '蒐證相機' : 'Camera'),
+        NavigationDestination(icon: const Icon(Icons.compress_rounded), label: _isZh ? '20MB壓縮' : 'Compress'),
+        NavigationDestination(icon: const Icon(Icons.policy_rounded), label: _isZh ? '通報案件' : 'Portals'),
+      ]),
+    );
   });
 }
