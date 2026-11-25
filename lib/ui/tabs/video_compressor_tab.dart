@@ -211,7 +211,7 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
         ((meta['sizeMB'] as num?)?.toDouble() ?? 25.0).clamp(0.2, 4096.0);
     final double durationSec =
         ((meta['durationSeconds'] as num?)?.toDouble() ?? 15.0)
-            .clamp(5.0, 600.0);
+            .clamp(1.0, 600.0);
     final String fileName = (meta['fileName']?.toString() ?? 'iPhone_Clip.mov');
     final SampleSourceVideo real = SampleSourceVideo(
       id: 'REAL_DEVICE_VIDEO',
@@ -229,7 +229,8 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
     _realPickedVideo = real;
     _useRealPickedVideo = true;
     _trimStartSeconds = 0.0;
-    _trimDurationSeconds = _trimDurationSeconds.clamp(5.0, durationSec);
+    final double minDur = durationSec < 5.0 ? durationSec : 5.0;
+    _trimDurationSeconds = _trimDurationSeconds.clamp(minDur, durationSec);
   }
 
   SampleSourceVideo get _activeVideo {
@@ -241,8 +242,9 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
 
   CompressionPlan _currentPlan() {
     final SampleSourceVideo video = _activeVideo;
+    final double minDur = video.totalSeconds < 5.0 ? video.totalSeconds : 5.0;
     final double safeTrim =
-        _trimDurationSeconds.clamp(5.0, video.totalSeconds);
+        _trimDurationSeconds.clamp(minDur, video.totalSeconds);
     return VideoCompressionEngine.createPlan(
       sourceSizeMB: video.sourceSizeMB,
       clipDurationSeconds: safeTrim,
@@ -437,11 +439,15 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
     if (!ok) {
       final String errCode =
           nativeRes?['errorCode']?.toString() ?? 'TRANSCODE_FAILED';
+      final String errDetail =
+          nativeRes?['errorDetail']?.toString().trim() ?? '';
       final bool isPhotoDenied = errCode == 'PHOTO_PERMISSION_DENIED';
       setState(() {
         _isCompressing = false;
         _compressionProgress = 0.0;
       });
+      final String detailSuffix =
+          errDetail.isNotEmpty ? ' ($errDetail)' : '';
       messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
@@ -455,8 +461,8 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
                     ? '未獲相簿寫入權限，影片未儲存且未扣除體驗額度'
                     : 'Photos permission denied. File not saved; quota untouched.')
                 : (widget.isZh
-                    ? '硬體轉碼或存檔失敗，未扣除您的體驗額度'
-                    : 'Compression failed; your export quota was not charged.'),
+                    ? '硬體轉碼或存檔失敗$detailSuffix，未扣除您的體驗額度'
+                    : 'Compression or save failed$detailSuffix; quota untouched.'),
             style: const TextStyle(
               color: Color(0xFFFF453A),
               fontWeight: FontWeight.w600,
@@ -730,11 +736,12 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
 
   Widget _buildControlsCard(CompressionPlan plan) {
     final SampleSourceVideo video = _activeVideo;
-    final double maxSec = video.totalSeconds < 5.0 ? 5.0 : video.totalSeconds;
-    final double safeTrim = _trimDurationSeconds.clamp(5.0, maxSec);
+    final double maxSec = video.totalSeconds.clamp(1.0, 600.0);
+    final double minTrim = maxSec < 5.0 ? maxSec : 5.0;
+    final double safeTrim = _trimDurationSeconds.clamp(minTrim, maxSec);
     final double maxStart = (maxSec - safeTrim).clamp(0.0, maxSec);
     final double safeStart = _trimStartSeconds.clamp(0.0, maxStart);
-    final double safeEnd = (safeStart + safeTrim).clamp(safeStart + 5.0, maxSec);
+    final double safeEnd = (safeStart + safeTrim).clamp(safeStart + minTrim, maxSec);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -887,25 +894,25 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
             values: RangeValues(safeStart, safeEnd),
             min: 0.0,
             max: maxSec,
-            divisions: maxSec.round().clamp(5, 120),
-            onChanged: _isCompressing
+            divisions: maxSec.round().clamp(1, 120),
+            onChanged: (_isCompressing || maxSec <= minTrim)
                 ? null
                 : (RangeValues vals) {
                     double nextStart = vals.start;
                     double nextEnd = vals.end;
-                    if (nextEnd - nextStart < 5.0) {
+                    if (nextEnd - nextStart < minTrim) {
                       if ((nextStart - safeStart).abs() > 0.05) {
-                        nextStart = (nextEnd - 5.0).clamp(0.0, maxSec);
-                        nextEnd = (nextStart + 5.0).clamp(5.0, maxSec);
+                        nextStart = (nextEnd - minTrim).clamp(0.0, maxSec);
+                        nextEnd = (nextStart + minTrim).clamp(minTrim, maxSec);
                       } else {
-                        nextEnd = (nextStart + 5.0).clamp(5.0, maxSec);
-                        nextStart = (nextEnd - 5.0).clamp(0.0, maxSec);
+                        nextEnd = (nextStart + minTrim).clamp(minTrim, maxSec);
+                        nextStart = (nextEnd - minTrim).clamp(0.0, maxSec);
                       }
                     }
                     setState(() {
                       _trimStartSeconds = nextStart;
                       _trimDurationSeconds =
-                          (nextEnd - nextStart).clamp(5.0, maxSec);
+                          (nextEnd - nextStart).clamp(minTrim, maxSec);
                     });
                   },
             onChangeEnd: _isCompressing ? null : (_) => _syncCompressorPrefs(),

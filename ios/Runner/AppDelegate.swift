@@ -1,4 +1,5 @@
 import AVFoundation
+import AudioToolbox
 import CoreLocation
 import CryptoKit
 import Flutter
@@ -543,6 +544,14 @@ final class LiveCameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
         self.handleCheckActiveEntitlements(result: result)
       case "syncStoreKitRestore":
         self.handleSyncStoreKitRestore(result: result)
+      case "fetchStoreKitProducts":
+        let args = call.arguments as? [String: Any]
+        let ids = args?["productIds"] as? [String] ?? []
+        self.handleFetchStoreKitProducts(productIds: ids, result: result)
+      case "purchaseStoreKitProduct":
+        let args = call.arguments as? [String: Any]
+        let productId = args?["productId"] as? String ?? ""
+        self.handlePurchaseStoreKitProduct(productId: productId, result: result)
       case "loadKeychainQuota":
         result(self.loadKeychainQuota())
       case "saveKeychainQuota":
@@ -1322,17 +1331,32 @@ final class LiveCameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
       let sizeBytes = Double(fileValues?.fileSize ?? (25 * 1024 * 1024))
       let sizeMB = max(0.2, sizeBytes / (1024.0 * 1024.0))
 
-      DispatchQueue.main.async {
-        if let oldUrl = previousUrl, oldUrl != workingUrl {
-          try? FileManager.default.removeItem(at: oldUrl)
+      let finishPicker: (Bool) -> Void = { savedToPhotos in
+        DispatchQueue.main.async {
+          if let oldUrl = previousUrl, oldUrl != workingUrl {
+            try? FileManager.default.removeItem(at: oldUrl)
+          }
+          self?.selectedVideoUrl = workingUrl
+          cb([
+            "path": workingUrl.path,
+            "sizeMB": sizeMB,
+            "durationSeconds": durationSec,
+            "fileName": mediaUrl.lastPathComponent,
+            "savedToPhotos": savedToPhotos
+          ])
         }
-        self?.selectedVideoUrl = workingUrl
-        cb([
-          "path": workingUrl.path,
-          "sizeMB": sizeMB,
-          "durationSeconds": durationSec,
-          "fileName": mediaUrl.lastPathComponent
-        ])
+      }
+
+      PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+        if status == .authorized || status == .limited {
+          PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: workingUrl)
+          }) { saved, _ in
+            finishPicker(saved)
+          }
+        } else {
+          finishPicker(false)
+        }
       }
     }
   }
@@ -1351,7 +1375,237 @@ final class LiveCameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
     }
   }
 
-  // MARK: - 4. Hardware AVAssetReader + AVAssetWriter Bitrate Compression
+  // MARK: - 4. Hardware AVAssetReader + AVAssetWriter Bitrate Compression (with ExportSession Fallback)
+
+  private func transcodeWithAssetWriter(
+    asset: AVURLAsset,
+    videoTrack: AVAssetTrack,
+    audioTrack: AVAssetTrack?,
+    timeRange: CMTimeRange,
+    exportSec: Double,
+    videoBps: Int,
+    outW: Int,
+    outH: Int,
+    outUrl: URL
+  ) -> Bool {
+    do {
+      let reader = try AVAssetReader(asset: asset)
+      reader.timeRange = timeRange
+      let writer = try AVAssetWriter(outputURL: outUrl, fileType: .mp4)
+      writer.shouldOptimizeForNetworkUse = true
+
+      let readerVideoOutput = AVAssetReaderTrackOutput(
+        track: videoTrack,
+        outputSettings: [
+          kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
+        ]
+      )
+      readerVideoOutput.alwaysCopiesSampleData = false
+      guard reader.canAdd(readerVideoOutput) else {
+        return false
+      }
+      reader.add(readerVideoOutput)
+
+      let writerVideoInput = AVAssetWriterInput(
+        mediaType: .video,
+        outputSettings: [
+          AVVideoCodecKey: AVVideoCodecType.h264,
+          AVVideoWidthKey: outW,
+          AVVideoHeightKey: outH,
+          AVVideoScalingModeKey: AVVideoScalingModeResizeAspect,
+          AVVideoCompressionPropertiesKey: [
+            AVVideoAverageBitRateKey: videoBps
+          ]
+        ]
+      )
+      writerVideoInput.expectsMediaDataInRealTime = false
+      writerVideoInput.transform = videoTrack.preferredTransform
+      guard writer.canAdd(writerVideoInput) else {
+        return false
+      }
+      writer.add(writerVideoInput)
+
+      var readerAudioOutput: AVAssetReaderTrackOutput?
+      var writerAudioInput: AVAssetWriterInput?
+      if let aTrack = audioTrack {
+        var stereoLayout = AudioChannelLayout()
+        stereoLayout.mChannelLayoutTag = kAudioChannelLayoutTag_Stereo
+        let stereoLayoutData = Data(bytes: &stereoLayout, count: MemoryLayout<AudioChannelLayout>.size)
+
+        let rAudio = AVAssetReaderTrackOutput(
+          track: aTrack,
+          outputSettings: [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 2,
+            AVChannelLayoutKey: stereoLayoutData,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+          ]
+        )
+        rAudio.alwaysCopiesSampleData = false
+        let wAudio = AVAssetWriterInput(
+          mediaType: .audio,
+          outputSettings: [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: 44100,
+            AVNumberOfChannelsKey: 2,
+            AVChannelLayoutKey: stereoLayoutData,
+            AVEncoderBitRateKey: 96000
+          ]
+        )
+        wAudio.expectsMediaDataInRealTime = false
+        if reader.canAdd(rAudio) && writer.canAdd(wAudio) {
+          reader.add(rAudio)
+          writer.add(wAudio)
+          readerAudioOutput = rAudio
+          writerAudioInput = wAudio
+        }
+      }
+
+      guard writer.startWriting() else {
+        return false
+      }
+      guard reader.startReading() else {
+        writer.cancelWriting()
+        return false
+      }
+      writer.startSession(atSourceTime: timeRange.start)
+
+      let group = DispatchGroup()
+      let videoQueue = DispatchQueue(label: "com.beigou.timecampro.compress.video")
+      let audioQueue = DispatchQueue(label: "com.beigou.timecampro.compress.audio")
+      var lastProgressEmit = Date.distantPast
+
+      group.enter()
+      var videoFinished = false
+      let finishVideo = {
+        guard !videoFinished else { return }
+        videoFinished = true
+        writerVideoInput.markAsFinished()
+        group.leave()
+      }
+      writerVideoInput.requestMediaDataWhenReady(on: videoQueue) {
+        if writer.status == .failed || writer.status == .cancelled || reader.status == .failed || reader.status == .cancelled {
+          finishVideo()
+          return
+        }
+        while writerVideoInput.isReadyForMoreMediaData && !videoFinished {
+          if writer.status == .failed || writer.status == .cancelled || reader.status == .failed || reader.status == .cancelled {
+            finishVideo()
+            break
+          }
+          if let sample = readerVideoOutput.copyNextSampleBuffer() {
+            let pts = CMSampleBufferGetPresentationTimeStamp(sample)
+            let elapsed = CMTimeGetSeconds(CMTimeSubtract(pts, timeRange.start))
+            if elapsed.isFinite && exportSec > 0 {
+              let now = Date()
+              if now.timeIntervalSince(lastProgressEmit) >= 0.12 {
+                lastProgressEmit = now
+                let pct = max(0.02, min(0.96, elapsed / exportSec))
+                DispatchQueue.main.async {
+                  self.methodChannel?.invokeMethod("onVideoCompressionProgress", arguments: pct)
+                }
+              }
+            }
+            if !writerVideoInput.append(sample) {
+              finishVideo()
+              break
+            }
+          } else {
+            finishVideo()
+            break
+          }
+        }
+      }
+
+      if let rAudio = readerAudioOutput, let wAudio = writerAudioInput {
+        group.enter()
+        var audioFinished = false
+        let finishAudio = {
+          guard !audioFinished else { return }
+          audioFinished = true
+          wAudio.markAsFinished()
+          group.leave()
+        }
+        wAudio.requestMediaDataWhenReady(on: audioQueue) {
+          if writer.status == .failed || writer.status == .cancelled || reader.status == .failed || reader.status == .cancelled {
+            finishAudio()
+            return
+          }
+          while wAudio.isReadyForMoreMediaData && !audioFinished {
+            if writer.status == .failed || writer.status == .cancelled || reader.status == .failed || reader.status == .cancelled {
+              finishAudio()
+              break
+            }
+            if let sample = rAudio.copyNextSampleBuffer() {
+              if !wAudio.append(sample) {
+                finishAudio()
+                break
+              }
+            } else {
+              finishAudio()
+              break
+            }
+          }
+        }
+      }
+
+      group.wait()
+      let finishSem = DispatchSemaphore(value: 0)
+      writer.finishWriting {
+        finishSem.signal()
+      }
+      finishSem.wait()
+      return writer.status == .completed && FileManager.default.fileExists(atPath: outUrl.path)
+    } catch {
+      return false
+    }
+  }
+
+  private func transcodeWithExportSession(
+    asset: AVURLAsset,
+    timeRange: CMTimeRange,
+    videoBps: Int,
+    outUrl: URL
+  ) -> Bool {
+    let preset: String
+    if videoBps >= 1_500_000 {
+      preset = AVAssetExportPreset1280x720
+    } else if videoBps >= 700_000 {
+      preset = AVAssetExportPreset960x540
+    } else {
+      preset = AVAssetExportPresetMediumQuality
+    }
+    guard let session = AVAssetExportSession(asset: asset, presetName: preset) else {
+      return false
+    }
+    session.outputURL = outUrl
+    session.outputFileType = .mp4
+    session.timeRange = timeRange
+    session.shouldOptimizeForNetworkUse = true
+
+    let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .utility))
+    timer.schedule(deadline: .now() + 0.1, repeating: 0.15)
+    timer.setEventHandler { [weak self, weak session] in
+      guard let self = self, let s = session else { return }
+      let pct = max(0.05, min(0.96, Double(s.progress)))
+      DispatchQueue.main.async {
+        self.methodChannel?.invokeMethod("onVideoCompressionProgress", arguments: pct)
+      }
+    }
+    timer.resume()
+
+    let sem = DispatchSemaphore(value: 0)
+    session.exportAsynchronously {
+      sem.signal()
+    }
+    sem.wait()
+    timer.cancel()
+    return session.status == .completed && FileManager.default.fileExists(atPath: outUrl.path)
+  }
 
   private func handleCompressAndSave(
     startSeconds: Double,
@@ -1416,225 +1670,72 @@ final class LiveCameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
         .appendingPathComponent("TimeCamPro_Out_\(UUID().uuidString).mp4")
       try? FileManager.default.removeItem(at: outUrl)
 
-      do {
-        let reader = try AVAssetReader(asset: asset)
-        reader.timeRange = timeRange
-        let writer = try AVAssetWriter(outputURL: outUrl, fileType: .mp4)
-        writer.shouldOptimizeForNetworkUse = true
-
-        let readerVideoOutput = AVAssetReaderTrackOutput(
-          track: videoTrack,
-          outputSettings: [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
-          ]
+      var transcodeOk = self.transcodeWithAssetWriter(
+        asset: asset,
+        videoTrack: videoTrack,
+        audioTrack: audioTrack,
+        timeRange: timeRange,
+        exportSec: exportSec,
+        videoBps: videoBps,
+        outW: outW,
+        outH: outH,
+        outUrl: outUrl
+      )
+      if !transcodeOk {
+        try? FileManager.default.removeItem(at: outUrl)
+        transcodeOk = self.transcodeWithExportSession(
+          asset: asset,
+          timeRange: timeRange,
+          videoBps: videoBps,
+          outUrl: outUrl
         )
-        readerVideoOutput.alwaysCopiesSampleData = false
-        guard reader.canAdd(readerVideoOutput) else {
-          throw NSError(domain: "TimeCamPro", code: -10)
-        }
-        reader.add(readerVideoOutput)
+      }
 
-        let writerVideoInput = AVAssetWriterInput(
-          mediaType: .video,
-          outputSettings: [
-            AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: outW,
-            AVVideoHeightKey: outH,
-            AVVideoScalingModeKey: AVVideoScalingModeResizeAspect,
-            AVVideoCompressionPropertiesKey: [
-              AVVideoAverageBitRateKey: videoBps,
-              AVVideoExpectedSourceFrameRateKey: 30,
-              AVVideoMaxKeyFrameIntervalKey: 60,
-              AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel
-            ]
-          ]
-        )
-        writerVideoInput.expectsMediaDataInRealTime = false
-        writerVideoInput.transform = videoTrack.preferredTransform
-        guard writer.canAdd(writerVideoInput) else {
-          throw NSError(domain: "TimeCamPro", code: -11)
-        }
-        writer.add(writerVideoInput)
-
-        var readerAudioOutput: AVAssetReaderTrackOutput?
-        var writerAudioInput: AVAssetWriterInput?
-        if let aTrack = audioTrack {
-          let rAudio = AVAssetReaderTrackOutput(
-            track: aTrack,
-            outputSettings: [
-              AVFormatIDKey: kAudioFormatLinearPCM,
-              AVSampleRateKey: 44100,
-              AVNumberOfChannelsKey: 2,
-              AVLinearPCMBitDepthKey: 16,
-              AVLinearPCMIsFloatKey: false,
-              AVLinearPCMIsBigEndianKey: false,
-              AVLinearPCMIsNonInterleaved: false
-            ]
-          )
-          rAudio.alwaysCopiesSampleData = false
-          let wAudio = AVAssetWriterInput(
-            mediaType: .audio,
-            outputSettings: [
-              AVFormatIDKey: kAudioFormatMPEG4AAC,
-              AVSampleRateKey: 44100,
-              AVNumberOfChannelsKey: 2,
-              AVEncoderBitRateKey: 96000
-            ]
-          )
-          wAudio.expectsMediaDataInRealTime = false
-          if reader.canAdd(rAudio) && writer.canAdd(wAudio) {
-            reader.add(rAudio)
-            writer.add(wAudio)
-            readerAudioOutput = rAudio
-            writerAudioInput = wAudio
-          }
-        }
-
-        guard writer.startWriting() else {
-          throw NSError(domain: "TimeCamPro", code: -12)
-        }
-        guard reader.startReading() else {
-          writer.cancelWriting()
-          throw NSError(domain: "TimeCamPro", code: -13)
-        }
-        writer.startSession(atSourceTime: timeRange.start)
-
-        let group = DispatchGroup()
-        let videoQueue = DispatchQueue(label: "com.beigou.timecampro.compress.video")
-        let audioQueue = DispatchQueue(label: "com.beigou.timecampro.compress.audio")
-        var lastProgressEmit = Date.distantPast
-
-        group.enter()
-        var videoFinished = false
-        let finishVideo = {
-          guard !videoFinished else { return }
-          videoFinished = true
-          writerVideoInput.markAsFinished()
-          group.leave()
-        }
-        writerVideoInput.requestMediaDataWhenReady(on: videoQueue) {
-          if writer.status == .failed || writer.status == .cancelled || reader.status == .failed || reader.status == .cancelled {
-            finishVideo()
-            return
-          }
-          while writerVideoInput.isReadyForMoreMediaData && !videoFinished {
-            if writer.status == .failed || writer.status == .cancelled || reader.status == .failed || reader.status == .cancelled {
-              finishVideo()
-              break
-            }
-            if let sample = readerVideoOutput.copyNextSampleBuffer() {
-              let pts = CMSampleBufferGetPresentationTimeStamp(sample)
-              let elapsed = CMTimeGetSeconds(CMTimeSubtract(pts, timeRange.start))
-              if elapsed.isFinite && exportSec > 0 {
-                let now = Date()
-                if now.timeIntervalSince(lastProgressEmit) >= 0.12 {
-                  lastProgressEmit = now
-                  let pct = max(0.02, min(0.96, elapsed / exportSec))
-                  DispatchQueue.main.async {
-                    self.methodChannel?.invokeMethod("onVideoCompressionProgress", arguments: pct)
-                  }
-                }
-              }
-              if !writerVideoInput.append(sample) {
-                finishVideo()
-                break
-              }
-            } else {
-              finishVideo()
-              break
-            }
-          }
-        }
-
-        if let rAudio = readerAudioOutput, let wAudio = writerAudioInput {
-          group.enter()
-          var audioFinished = false
-          let finishAudio = {
-            guard !audioFinished else { return }
-            audioFinished = true
-            wAudio.markAsFinished()
-            group.leave()
-          }
-          wAudio.requestMediaDataWhenReady(on: audioQueue) {
-            if writer.status == .failed || writer.status == .cancelled || reader.status == .failed || reader.status == .cancelled {
-              finishAudio()
-              return
-            }
-            while wAudio.isReadyForMoreMediaData && !audioFinished {
-              if writer.status == .failed || writer.status == .cancelled || reader.status == .failed || reader.status == .cancelled {
-                finishAudio()
-                break
-              }
-              if let sample = rAudio.copyNextSampleBuffer() {
-                if !wAudio.append(sample) {
-                  finishAudio()
-                  break
-                }
-              } else {
-                finishAudio()
-                break
-              }
-            }
-          }
-        }
-
-        group.wait()
-        let finishSem = DispatchSemaphore(value: 0)
-        writer.finishWriting {
-          finishSem.signal()
-        }
-        finishSem.wait()
-
-        guard writer.status == .completed else {
-          try? FileManager.default.removeItem(at: outUrl)
-          DispatchQueue.main.async {
-            result(["ok": false, "savedToPhotos": false, "errorCode": "TRANSCODE_FAILED"])
-          }
-          return
-        }
-
-        DispatchQueue.main.async {
-          self.methodChannel?.invokeMethod("onVideoCompressionProgress", arguments: 1.0)
-        }
-
-        let vals = try? outUrl.resourceValues(forKeys: [.fileSizeKey])
-        let outMB = max(0.1, Double(vals?.fileSize ?? 0) / (1024.0 * 1024.0))
-
-        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-          if status == .authorized || status == .limited {
-            PHPhotoLibrary.shared().performChanges({
-              PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: outUrl)
-            }) { saved, _ in
-              try? FileManager.default.removeItem(at: outUrl)
-              DispatchQueue.main.async {
-                result([
-                  "ok": saved,
-                  "savedToPhotos": saved,
-                  "outputMB": outMB,
-                  "startSeconds": safeStart,
-                  "durationSeconds": exportSec,
-                  "errorCode": saved ? NSNull() : "PHOTO_SAVE_FAILED"
-                ])
-              }
-            }
-          } else {
-            try? FileManager.default.removeItem(at: outUrl)
-            DispatchQueue.main.async {
-              result([
-                "ok": false,
-                "savedToPhotos": false,
-                "outputMB": outMB,
-                "startSeconds": safeStart,
-                "durationSeconds": exportSec,
-                "errorCode": "PHOTO_PERMISSION_DENIED"
-              ])
-            }
-          }
-        }
-      } catch {
+      guard transcodeOk else {
         try? FileManager.default.removeItem(at: outUrl)
         DispatchQueue.main.async {
           result(["ok": false, "savedToPhotos": false, "errorCode": "TRANSCODE_FAILED"])
+        }
+        return
+      }
+
+      DispatchQueue.main.async {
+        self.methodChannel?.invokeMethod("onVideoCompressionProgress", arguments: 1.0)
+      }
+
+      let vals = try? outUrl.resourceValues(forKeys: [.fileSizeKey])
+      let outMB = max(0.1, Double(vals?.fileSize ?? 0) / (1024.0 * 1024.0))
+
+      PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+        if status == .authorized || status == .limited {
+          PHPhotoLibrary.shared().performChanges({
+            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: outUrl)
+          }) { saved, saveErr in
+            try? FileManager.default.removeItem(at: outUrl)
+            DispatchQueue.main.async {
+              result([
+                "ok": saved,
+                "savedToPhotos": saved,
+                "outputMB": outMB,
+                "startSeconds": safeStart,
+                "durationSeconds": exportSec,
+                "errorCode": saved ? NSNull() : "PHOTO_SAVE_FAILED",
+                "errorDetail": (saveErr?.localizedDescription as Any?) ?? NSNull()
+              ])
+            }
+          }
+        } else {
+          try? FileManager.default.removeItem(at: outUrl)
+          DispatchQueue.main.async {
+            result([
+              "ok": false,
+              "savedToPhotos": false,
+              "outputMB": outMB,
+              "startSeconds": safeStart,
+              "durationSeconds": exportSec,
+              "errorCode": "PHOTO_PERMISSION_DENIED"
+            ])
+          }
         }
       }
     }
@@ -1763,6 +1864,103 @@ final class LiveCameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
       }
     } else {
       result([])
+    }
+  }
+
+  private func handleFetchStoreKitProducts(productIds: [String], result: @escaping FlutterResult) {
+    if #available(iOS 15.0, *) {
+      Task {
+        do {
+          let products = try await StoreKit.Product.products(for: Set(productIds))
+          let mapped: [[String: Any]] = products.map { p in
+            let currency: String
+            if #available(iOS 16.0, *) {
+              currency = p.priceFormatStyle.currencyCode
+            } else {
+              currency = p.priceFormatStyle.locale.currencyCode ?? Locale.current.currencyCode ?? "USD"
+            }
+            return [
+              "id": p.id,
+              "displayPrice": p.displayPrice,
+              "price": NSDecimalNumber(decimal: p.price).doubleValue,
+              "displayName": p.displayName,
+              "currencyCode": currency
+            ]
+          }
+          DispatchQueue.main.async {
+            result(mapped)
+          }
+        } catch {
+          DispatchQueue.main.async {
+            result([[String: Any]]())
+          }
+        }
+      }
+    } else {
+      result([[String: Any]]())
+    }
+  }
+
+  private func handlePurchaseStoreKitProduct(productId: String, result: @escaping FlutterResult) {
+    if #available(iOS 15.0, *) {
+      Task {
+        do {
+          let products = try await StoreKit.Product.products(for: [productId])
+          guard let product = products.first else {
+            DispatchQueue.main.async {
+              result([
+                "status": "error",
+                "message": "App Store 尚未回傳此商品資訊 (\(productId))，請確認網路與 Sandbox 帳號設定。"
+              ])
+            }
+            return
+          }
+          let purchaseResult = try await product.purchase()
+          switch purchaseResult {
+          case .success(let verification):
+            switch verification {
+            case .verified(let tx):
+              await tx.finish()
+              let activeIds = await self.collectActiveProductIds()
+              DispatchQueue.main.async {
+                self.methodChannel?.invokeMethod("onStoreKitEntitlementsChanged", arguments: activeIds)
+                result([
+                  "status": "purchased",
+                  "productId": tx.productID
+                ])
+              }
+            case .unverified(_, let verErr):
+              DispatchQueue.main.async {
+                result([
+                  "status": "error",
+                  "message": verErr.localizedDescription
+                ])
+              }
+            }
+          case .userCancelled:
+            DispatchQueue.main.async {
+              result(["status": "canceled"])
+            }
+          case .pending:
+            DispatchQueue.main.async {
+              result(["status": "pending"])
+            }
+          @unknown default:
+            DispatchQueue.main.async {
+              result(["status": "error", "message": "Unknown purchase state"])
+            }
+          }
+        } catch {
+          DispatchQueue.main.async {
+            result([
+              "status": "error",
+              "message": error.localizedDescription
+            ])
+          }
+        }
+      }
+    } else {
+      result(["status": "error", "message": "Requires iOS 15.0 or newer"])
     }
   }
 

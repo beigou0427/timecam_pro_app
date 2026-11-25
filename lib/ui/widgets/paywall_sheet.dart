@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
 import '../../core/native_hardware_bridge.dart';
-import '../../core/storekit_iap_service.dart';
 
 enum ProPlanTier {
   annual(
@@ -113,7 +111,8 @@ class _PaywallSheetState extends State<PaywallSheet> {
   ProPlanTier _selectedTier = ProPlanTier.annual;
   bool _showMonthlyPlan = false;
   bool _isProcessing = false;
-  Map<String, ProductDetails> _storeProducts = <String, ProductDetails>{};
+  Map<String, Map<String, dynamic>> _sk2Products =
+      <String, Map<String, dynamic>>{};
 
   static const String _eulaUrl =
       'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
@@ -131,69 +130,46 @@ class _PaywallSheetState extends State<PaywallSheet> {
   @override
   void initState() {
     super.initState();
-    _storeProducts = StorekitIapService.cachedProducts;
     _loadStorePrices();
-    StorekitIapService.setUiCallbacks(
-      onError: (String message) {
-        if (!mounted) return;
-        setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFFFF453A),
-            content: Text(message),
-          ),
-        );
-      },
-      onCanceled: () {
-        if (!mounted) return;
-        setState(() => _isProcessing = false);
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    StorekitIapService.setUiCallbacks(onError: null, onCanceled: null);
-    super.dispose();
   }
 
   Future<void> _loadStorePrices() async {
+    if (!NativeHardwareBridge.isLiveIosRuntime) return;
     final Set<String> ids =
         _sellableTiers.map((ProPlanTier t) => t.productId).toSet();
-    final Map<String, ProductDetails> loaded =
-        await StorekitIapService.fetchProducts(ids);
+    final Map<String, Map<String, dynamic>> loaded =
+        await NativeHardwareBridge.fetchStoreKit2Products(ids);
     if (!mounted || loaded.isEmpty) return;
     setState(() {
-      _storeProducts = loaded;
+      _sk2Products = loaded;
     });
   }
 
   String _displayPrice(ProPlanTier tier) {
-    final ProductDetails? live = _storeProducts[tier.productId];
-    if (live != null && live.price.isNotEmpty) {
+    final Map<String, dynamic>? live = _sk2Products[tier.productId];
+    final String displayPrice = live?['displayPrice']?.toString() ?? '';
+    if (displayPrice.isNotEmpty) {
       if (tier == ProPlanTier.annual) {
-        return widget.isZh ? '${live.price} / 年' : '${live.price} / yr';
+        return widget.isZh ? '$displayPrice / 年' : '$displayPrice / yr';
       }
       if (tier == ProPlanTier.monthly) {
-        return widget.isZh ? '${live.price} / 月' : '${live.price} / mo';
+        return widget.isZh ? '$displayPrice / 月' : '$displayPrice / mo';
       }
-      return live.price;
+      return displayPrice;
     }
     return tier.localizedPrice(isZh: widget.isZh);
   }
 
   String _dynamicSubNote(ProPlanTier tier) {
     if (tier == ProPlanTier.annual) {
-      final ProductDetails? live = _storeProducts[tier.productId];
-      if (live != null && live.rawPrice > 0) {
-        final double daily = live.rawPrice / 365.0;
-        final String sym = live.currencySymbol.isNotEmpty
-            ? live.currencySymbol
-            : live.currencyCode;
+      final Map<String, dynamic>? live = _sk2Products[tier.productId];
+      final double? rawPrice = (live?['price'] as num?)?.toDouble();
+      if (rawPrice != null && rawPrice > 0) {
+        final double daily = rawPrice / 365.0;
+        final String cur = live?['currencyCode']?.toString() ?? '';
         return widget.isZh
-            ? '平均約 $sym${daily.toStringAsFixed(1)} / 日・隨時可取消'
-            : 'Approx. $sym${daily.toStringAsFixed(2)} / day • Cancel anytime';
+            ? '平均約 $cur ${daily.toStringAsFixed(1)} / 日・隨時可取消'
+            : 'Approx. $cur ${daily.toStringAsFixed(2)} / day • Cancel anytime';
       }
     }
     return tier.localizedSubNote(isZh: widget.isZh);
@@ -367,32 +343,66 @@ class _PaywallSheetState extends State<PaywallSheet> {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     setState(() => _isProcessing = true);
 
-    final String? err =
-        await StorekitIapService.buy(_selectedTier.productId);
-    if (!mounted) return;
-
-    if (err != null) {
-      setState(() => _isProcessing = false);
-      messenger.showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFFFF453A),
-          content: Text(err),
-        ),
-      );
-      return;
-    }
-
-    if (StorekitIapService.isTest) {
+    if (!NativeHardwareBridge.isLiveIosRuntime) {
       setState(() => _isProcessing = false);
       widget.onUnlockSuccess(_selectedTier);
       return;
     }
 
-    Future<void>.delayed(const Duration(seconds: 15), () {
-      if (!mounted || !_isProcessing) return;
-      setState(() => _isProcessing = false);
-    });
+    final Map<String, dynamic>? res =
+        await NativeHardwareBridge.purchaseStoreKit2Product(
+      _selectedTier.productId,
+    );
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    final String status = res?['status']?.toString() ?? 'error';
+    if (status == 'purchased') {
+      final String purchasedId =
+          res?['productId']?.toString() ?? _selectedTier.productId;
+      widget.onUnlockSuccess(ProPlanTier.fromProductId(purchasedId));
+      return;
+    }
+    if (status == 'canceled') {
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1F1F23),
+          content: Text(
+            widget.isZh ? '已取消購買' : 'Purchase canceled',
+            style: const TextStyle(color: Color(0xFFE4E4E7)),
+          ),
+        ),
+      );
+      return;
+    }
+    if (status == 'pending') {
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1F1F23),
+          content: Text(
+            widget.isZh
+                ? '購買等待核准，核准後將自動解鎖'
+                : 'Purchase pending approval; unlocks once approved.',
+            style: const TextStyle(color: Color(0xFFF5B73B)),
+          ),
+        ),
+      );
+      return;
+    }
+
+    final String errMsg = res?['message']?.toString() ??
+        (widget.isZh
+            ? '購買失敗，請確認網路與 Apple ID 設定後重試'
+            : 'Purchase failed. Check connection & Apple ID.');
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFFFF453A),
+        content: Text(errMsg),
+      ),
+    );
   }
 
   Future<void> _executeRestore() async {
@@ -400,7 +410,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     setState(() => _isProcessing = true);
 
-    if (StorekitIapService.isTest) {
+    if (!NativeHardwareBridge.isLiveIosRuntime) {
       setState(() => _isProcessing = false);
       messenger.showSnackBar(
         SnackBar(

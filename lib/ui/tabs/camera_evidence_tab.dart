@@ -919,6 +919,7 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab>
         if (!mounted) return;
         setState(() => _isCapturing = false);
         if (recorded == null) return;
+        final bool savedRaw = recorded['savedToPhotos'] == true;
         widget.onCaptureEvidence(snap);
         widget.onRecordedVideo?.call(recorded);
         messenger.showSnackBar(
@@ -926,11 +927,15 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab>
             behavior: SnackBarBehavior.floating,
             backgroundColor: const Color(0xFF1F1F23),
             content: Text(
-              widget.isZh
-                  ? '錄影完成，已載入 20MB 壓縮器'
-                  : 'Recorded and loaded into 20MB Compressor',
-              style: const TextStyle(
-                color: Color(0xFF34C759),
+              savedRaw
+                  ? (widget.isZh
+                      ? '錄影已存至相簿，並載入 20MB 壓縮器'
+                      : 'Saved to Photos & loaded into 20MB Compressor')
+                  : (widget.isZh
+                      ? '錄影已完成並載入 20MB 壓縮器（無相簿權限，未直接存入相簿）'
+                      : 'Recorded into 20MB Compressor (Photos permission missing for raw clip)'),
+              style: TextStyle(
+                color: savedRaw ? const Color(0xFF34C759) : const Color(0xFFF5B73B),
                 fontWeight: FontWeight.w600,
               ),
             ),

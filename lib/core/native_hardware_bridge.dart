@@ -558,6 +558,64 @@ class NativeHardwareBridge {
     }
   }
 
+  static Future<Map<String, Map<String, dynamic>>> fetchStoreKit2Products(
+    Set<String> productIds, {
+    bool isTestMode = false,
+  }) async {
+    if (isTestMode || _isTestSandbox || productIds.isEmpty) {
+      return <String, Map<String, dynamic>>{};
+    }
+    try {
+      final List<Object?>? raw = await _channel.invokeMethod<List<Object?>>(
+        'fetchStoreKitProducts',
+        <String, dynamic>{'productIds': productIds.toList(growable: false)},
+      );
+      if (raw == null) return <String, Map<String, dynamic>>{};
+      final Map<String, Map<String, dynamic>> out =
+          <String, Map<String, dynamic>>{};
+      for (final Object? item in raw) {
+        if (item is Map) {
+          final Map<String, dynamic> m = item.map(
+            (Object? k, Object? v) =>
+                MapEntry<String, dynamic>(k.toString(), v),
+          );
+          final String id = m['id']?.toString() ?? '';
+          if (id.isNotEmpty) {
+            out[id] = m;
+          }
+        }
+      }
+      return out;
+    } catch (e) {
+      debugPrint('[NativeHardwareBridge] fetchStoreKit2Products failed: $e');
+      return <String, Map<String, dynamic>>{};
+    }
+  }
+
+  static Future<Map<String, dynamic>?> purchaseStoreKit2Product(
+    String productId, {
+    bool isTestMode = false,
+  }) async {
+    if (isTestMode || _isTestSandbox) return null;
+    try {
+      final Map<Object?, Object?>? raw =
+          await _channel.invokeMethod<Map<Object?, Object?>>(
+        'purchaseStoreKitProduct',
+        <String, dynamic>{'productId': productId},
+      );
+      if (raw == null) return null;
+      return raw.map(
+        (Object? k, Object? v) => MapEntry<String, dynamic>(k.toString(), v),
+      );
+    } catch (e) {
+      debugPrint('[NativeHardwareBridge] purchaseStoreKit2Product failed: $e');
+      return <String, dynamic>{
+        'status': 'error',
+        'message': e.toString(),
+      };
+    }
+  }
+
   static Future<bool> openExternalUrl(
     String url, {
     bool isTestMode = false,

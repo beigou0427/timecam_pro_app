@@ -225,17 +225,14 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell>
       },
     );
 
-    StorekitIapService.initialize(
-      onPurchaseEvent: (String productId, bool isRestore) async {
-        if (!mounted) return;
-        if (widget.isTestMode) {
+    if (!NativeHardwareBridge.isLiveIosRuntime) {
+      StorekitIapService.initialize(
+        onPurchaseEvent: (String productId, bool isRestore) async {
+          if (!mounted) return;
           _applyProUnlock(ProPlanTier.fromProductId(productId));
-          return;
-        }
-        // 必須經 StoreKit 2 currentEntitlements 即時驗證，嚴禁未驗票直接解鎖
-        await _verifyLiveStoreKitEntitlements(showSuccessToast: true);
-      },
-    );
+        },
+      );
+    }
 
     if (widget.isTestMode) return;
     final String? raw = await NativeHardwareBridge.loadPersistedState(
@@ -544,13 +541,13 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell>
               const ClipboardData(text: _supportEmail),
             );
             final String body = Uri.encodeComponent(
-              'App: TimeCam Pro 1.0.0+14\n'
+              'App: TimeCam Pro 1.0.0+15\n'
               'Mode: ${_activePersona.name}\n'
               'Pro: $_isProUnlocked\n'
               'Description / Issue:\n',
             );
             final bool opened = await NativeHardwareBridge.openExternalUrl(
-              'mailto:$_supportEmail?subject=TimeCam%20Pro%20Support%20(v1.0.0%2B14)&body=$body',
+              'mailto:$_supportEmail?subject=TimeCam%20Pro%20Support%20(v1.0.0%2B15)&body=$body',
               isTestMode: widget.isTestMode,
             );
             if (!mounted) return;
