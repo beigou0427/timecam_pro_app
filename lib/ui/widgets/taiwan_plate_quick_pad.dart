@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// 台灣公路總局監理所車牌與外勤案場分類列舉
+/// 台灣監理格式車牌與外勤案場分類列舉
 enum TaiwanVehiclePlateCategory {
   standard7Code(
     labelZh: '新式汽機車 (3英-4數)',
@@ -9,8 +9,8 @@ enum TaiwanVehiclePlateCategory {
     samplePrefix: 'ABC-',
   ),
   commercialTaxi(
-    labelZh: '營業/多元計程車 (R開頭)',
-    labelEn: 'Commercial/Taxi (RCD-5566)',
+    labelZh: '營業/多元車隊 (R開頭)',
+    labelEn: 'Commercial/Fleet (RCD-5566)',
     samplePrefix: 'RCD-',
   ),
   electricVehicle(
@@ -42,7 +42,7 @@ enum TaiwanVehiclePlateCategory {
   String localizedLabel({required bool isZh}) => isZh ? labelZh : labelEn;
 }
 
-/// 單手一鍵附加之高頻違規態樣與巡檢狀態膠囊模型
+/// 單手一鍵附加之現場態樣與巡檢標籤模型
 @immutable
 class QuickViolationTag {
   const QuickViolationTag({
@@ -58,20 +58,21 @@ class QuickViolationTag {
   String localizedTag({required bool isZh}) => isZh ? tagZh : tagEn;
 }
 
-/// PM #2 Shreyas Doshi 改進：零摩擦台灣車牌智慧格式化與單手閃電快選面板
+/// 全鍵盤（符合 >=44pt Apple HIG 觸控高度）極簡車牌與備註快選面板
 class TaiwanPlateQuickPad extends StatefulWidget {
   const TaiwanPlateQuickPad({
     super.key,
     required this.isZh,
     required this.initialValue,
     required this.onApplyNote,
+    this.onScanPlateOcr,
   });
 
   final bool isZh;
   final String initialValue;
   final ValueChanged<String> onApplyNote;
+  final Future<String?> Function()? onScanPlateOcr;
 
-  /// 台灣街頭高頻車牌字首快選清單
   static const List<String> commonPrefixes = <String>[
     'ABC-',
     'BLN-',
@@ -83,73 +84,56 @@ class TaiwanPlateQuickPad extends StatefulWidget {
     'TAA-',
   ];
 
-  /// 單手一鍵點選之高頻違規與外勤巡檢標籤庫
   static const List<QuickViolationTag> quickTags = <QuickViolationTag>[
-    QuickViolationTag(
-      tagZh: '紅線違停',
-      tagEn: 'Red Curb',
-      isEngineering: false,
-    ),
-    QuickViolationTag(
-      tagZh: '併排停車',
-      tagEn: 'Double Parked',
-      isEngineering: false,
-    ),
-    QuickViolationTag(
-      tagZh: '未打方向燈',
-      tagEn: 'No Turn Signal',
-      isEngineering: false,
-    ),
-    QuickViolationTag(
-      tagZh: '未禮讓行人',
-      tagEn: 'No Pedestrian Yield',
-      isEngineering: false,
-    ),
-    QuickViolationTag(
-      tagZh: '占用人行道',
-      tagEn: 'Sidewalk Blocked',
-      isEngineering: false,
-    ),
-    QuickViolationTag(
-      tagZh: '亂丟煙蒂',
-      tagEn: 'Littering Butt',
-      isEngineering: false,
-    ),
-    QuickViolationTag(
-      tagZh: '太陽能案場巡檢合格',
-      tagEn: 'Solar Site Inspected',
-      isEngineering: true,
-    ),
-    QuickViolationTag(
-      tagZh: '施工前現場存證',
-      tagEn: 'Pre-Work Evidence',
-      isEngineering: true,
-    ),
+    QuickViolationTag(tagZh: '車道阻塞', tagEn: 'Lane Obstruction', isEngineering: false),
+    QuickViolationTag(tagZh: '未打方向燈', tagEn: 'No Signal', isEngineering: false),
+    QuickViolationTag(tagZh: '未禮讓行人', tagEn: 'No Yield', isEngineering: false),
+    QuickViolationTag(tagZh: '危險變換車道', tagEn: 'Unsafe Merge', isEngineering: false),
+    QuickViolationTag(tagZh: '占用人行道', tagEn: 'Sidewalk Blocked', isEngineering: false),
+    QuickViolationTag(tagZh: '環保清潔紀錄', tagEn: 'Environmental Log', isEngineering: false),
+    QuickViolationTag(tagZh: '巡檢合格', tagEn: 'Inspected', isEngineering: true),
+    QuickViolationTag(tagZh: '施工存證', tagEn: 'Pre-Work', isEngineering: true),
   ];
 
-  /// 台灣監理所車牌防混淆智慧格式化：自動轉大寫、補連字號並將數字區誤植之 O/I 校正為 0/1
+  /// 監理車牌格式整理：支援 3英-4數 與舊式前/後數字車牌，只針對數字段校正 O/I
   static String sanitizeTaiwanPlate(String rawInput) {
     final String trimmed = rawInput.trim().toUpperCase();
-    if (trimmed.isEmpty) return 'ABC-1234';
+    if (trimmed.isEmpty) return '';
 
     final String clean = trimmed.replaceAll(RegExp(r'[^A-Z0-9-]'), '');
-    if (!clean.contains('-') && clean.length == 7) {
-      final String prefix = clean.substring(0, 3);
-      final String suffix = clean
-          .substring(3, 7)
-          .replaceAll('O', '0')
-          .replaceAll('I', '1');
-      return '$prefix-$suffix';
+    if (clean.isEmpty) return '';
+
+    if (!clean.contains('-')) {
+      final RegExpMatch? m34 =
+          RegExp(r'^([A-Z]{3})([0-9OI]{4})$').firstMatch(clean);
+      if (m34 != null) {
+        final String suffix =
+            m34.group(2)!.replaceAll('O', '0').replaceAll('I', '1');
+        return '${m34.group(1)}-$suffix';
+      }
+      final RegExpMatch? m42 =
+          RegExp(r'^([0-9OI]{4})([A-Z]{2})$').firstMatch(clean);
+      if (m42 != null) {
+        final String prefix =
+            m42.group(1)!.replaceAll('O', '0').replaceAll('I', '1');
+        return '$prefix-${m42.group(2)}';
+      }
+      return clean;
     }
 
-    if (clean.contains('-')) {
-      final List<String> parts = clean.split('-');
-      if (parts.length >= 2) {
-        final String p0 = parts[0].isEmpty ? 'ABC' : parts[0];
-        final String p1 =
-            parts[1].replaceAll('O', '0').replaceAll('I', '1');
-        return '$p0-$p1';
+    final List<String> parts = clean.split('-');
+    if (parts.length >= 2) {
+      final String p0 = parts[0];
+      final String p1 = parts[1];
+      if (RegExp(r'^[A-Z]+$').hasMatch(p0)) {
+        final String fixedP1 = p1.replaceAll('O', '0').replaceAll('I', '1');
+        return '$p0-$fixedP1';
       }
+      if (RegExp(r'^[A-Z]+$').hasMatch(p1)) {
+        final String fixedP0 = p0.replaceAll('O', '0').replaceAll('I', '1');
+        return '$fixedP0-$p1';
+      }
+      return '$p0-$p1';
     }
     return clean;
   }
@@ -159,136 +143,239 @@ class TaiwanPlateQuickPad extends StatefulWidget {
 }
 
 class _TaiwanPlateQuickPadState extends State<TaiwanPlateQuickPad> {
-  late String _platePart;
+  late final TextEditingController _plateController;
   late String _tagPart;
+  bool _isScanningOcr = false;
+
+  static const List<List<String>> _qwertyRows = <List<String>>[
+    <String>['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+    <String>['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+    <String>['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
+  ];
 
   @override
   void initState() {
     super.initState();
     final String init = widget.initialValue.trim();
     final int spaceIdx = init.indexOf(' ');
+    String initialPlate;
     if (spaceIdx > 0) {
-      _platePart =
+      initialPlate =
           TaiwanPlateQuickPad.sanitizeTaiwanPlate(init.substring(0, spaceIdx));
       _tagPart = init.substring(spaceIdx + 1).trim();
     } else {
-      _platePart = TaiwanPlateQuickPad.sanitizeTaiwanPlate(
-        init.isEmpty ? 'ABC-1234' : init,
+      initialPlate = init.isEmpty
+          ? ''
+          : TaiwanPlateQuickPad.sanitizeTaiwanPlate(init);
+      _tagPart = '';
+    }
+    _plateController = TextEditingController(text: initialPlate);
+  }
+
+  @override
+  void dispose() {
+    _plateController.dispose();
+    super.dispose();
+  }
+
+  void _setPlateText(String next) {
+    _plateController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: next.length),
+    );
+    setState(() {});
+  }
+
+  void _appendChar(String ch, {required bool isLetter}) {
+    HapticFeedback.lightImpact();
+    final String cur = _plateController.text.toUpperCase();
+    if (cur.length >= 8) return;
+
+    if (ch == '-') {
+      if (cur.isEmpty || cur.contains('-')) return;
+      _setPlateText('$cur-');
+      return;
+    }
+
+    if (isLetter && !cur.contains('-') && RegExp(r'^[A-Z]{2}$').hasMatch(cur)) {
+      _setPlateText('$cur$ch-');
+      return;
+    }
+    if (!isLetter &&
+        !cur.contains('-') &&
+        RegExp(r'^[A-Z]{2,3}$').hasMatch(cur)) {
+      _setPlateText('$cur-$ch');
+      return;
+    }
+    _setPlateText('$cur$ch');
+  }
+
+  void _backspace() {
+    HapticFeedback.selectionClick();
+    final String cur = _plateController.text;
+    if (cur.isEmpty) return;
+    _setPlateText(cur.substring(0, cur.length - 1));
+  }
+
+  Future<void> _triggerOcrScan() async {
+    if (_isScanningOcr || widget.onScanPlateOcr == null) return;
+    HapticFeedback.mediumImpact();
+    setState(() => _isScanningOcr = true);
+    final String? recognized = await widget.onScanPlateOcr!();
+    if (!mounted) return;
+    setState(() => _isScanningOcr = false);
+    if (recognized != null && recognized.trim().isNotEmpty) {
+      _setPlateText(
+        TaiwanPlateQuickPad.sanitizeTaiwanPlate(recognized),
       );
-      _tagPart = widget.isZh ? '紅線違停' : 'Red Curb';
     }
   }
 
-  void _applyPrefix(String prefix) {
-    HapticFeedback.selectionClick();
-    setState(() {
-      final int dashIdx = _platePart.indexOf('-');
-      final String currentDigits =
-          (dashIdx >= 0 && dashIdx + 1 < _platePart.length)
-              ? _platePart.substring(dashIdx + 1)
-              : '';
-      _platePart = '$prefix$currentDigits';
-    });
-  }
-
-  void _appendDigit(String digit) {
-    HapticFeedback.lightImpact();
-    setState(() {
-      final int dashIdx = _platePart.indexOf('-');
-      final String prefix =
-          dashIdx >= 0 ? _platePart.substring(0, dashIdx + 1) : 'ABC-';
-      final String currentDigits =
-          (dashIdx >= 0 && dashIdx + 1 < _platePart.length)
-              ? _platePart.substring(dashIdx + 1)
-              : '';
-      final String nextDigits = currentDigits.length >= 4
-          ? digit
-          : '$currentDigits$digit';
-      _platePart = '$prefix$nextDigits';
-    });
-  }
-
-  void _backspaceDigit() {
-    HapticFeedback.selectionClick();
-    setState(() {
-      final int dashIdx = _platePart.indexOf('-');
-      if (dashIdx >= 0 && dashIdx + 1 < _platePart.length) {
-        _platePart = _platePart.substring(0, _platePart.length - 1);
-      }
-    });
-  }
-
   String _composedPreview() {
+    final String raw = _plateController.text.trim();
     final String formattedPlate =
-        TaiwanPlateQuickPad.sanitizeTaiwanPlate(_platePart);
-    if (_tagPart.trim().isEmpty) return formattedPlate;
-    return '$formattedPlate ${_tagPart.trim()}';
+        raw.isEmpty ? '' : TaiwanPlateQuickPad.sanitizeTaiwanPlate(raw);
+    final String tag = _tagPart.trim();
+    if (formattedPlate.isEmpty) return tag;
+    if (tag.isEmpty) return formattedPlate;
+    return '$formattedPlate $tag';
   }
 
-  Widget _buildDigitGrid() {
+  Widget _buildKeyButton({
+    Key? key,
+    required String label,
+    required VoidCallback onTap,
+    Color bgColor = const Color(0xFF232326),
+    Color fgColor = Colors.white,
+    double fontSize = 15,
+    Widget? child,
+  }) {
+    return GestureDetector(
+      key: key,
+      onTap: onTap,
+      child: Container(
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.all(Radius.circular(8)),
+        ),
+        child: child ??
+            Text(
+              label,
+              style: TextStyle(
+                color: fgColor,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w700,
+                fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+              ),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildDigitsRow() {
     const List<String> digits = <String>[
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-      '7',
-      '8',
-      '9',
-      '0',
+      '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
     ];
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+    return Row(
       children: <Widget>[
-        for (final String d in digits)
-          SizedBox(
-            width: 54,
-            height: 40,
-            child: ElevatedButton(
-              key: Key('plate_digit_btn_$d'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E293B),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.zero,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(8)),
-                ),
-              ),
-              onPressed: () => _appendDigit(d),
-              child: Text(
-                d,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+        for (int i = 0; i < digits.length; i++) ...<Widget>[
+          Expanded(
+            child: _buildKeyButton(
+              key: Key('plate_digit_btn_${digits[i]}'),
+              label: digits[i],
+              onTap: () => _appendChar(digits[i], isLetter: false),
             ),
           ),
-        SizedBox(
-          width: 68,
-          height: 40,
-          child: OutlinedButton.icon(
-            key: const Key('plate_backspace_btn'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFFF59E0B),
-              padding: EdgeInsets.zero,
-              side: const BorderSide(color: Color(0xFFF59E0B)),
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
+          if (i < digits.length - 1) const SizedBox(width: 4),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildQwertyKeyboard() {
+    return Column(
+      children: <Widget>[
+        // Row 1: Q..P (10 keys)
+        Row(
+          children: <Widget>[
+            for (int c = 0; c < _qwertyRows[0].length; c++) ...<Widget>[
+              Expanded(
+                child: _buildKeyButton(
+                  key: Key('plate_letter_btn_${_qwertyRows[0][c]}'),
+                  label: _qwertyRows[0][c],
+                  fontSize: 13.5,
+                  onTap: () =>
+                      _appendChar(_qwertyRows[0][c], isLetter: true),
+                ),
               ),
-            ),
-            onPressed: _backspaceDigit,
-            icon: const Icon(Icons.backspace_outlined, size: 16),
-            label: Text(
-              widget.isZh ? '退格' : 'Del',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+              if (c < _qwertyRows[0].length - 1) const SizedBox(width: 4),
+            ],
+          ],
+        ),
+        const SizedBox(height: 5),
+        // Row 2: A..L (9 keys centered)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: <Widget>[
+              for (int c = 0; c < _qwertyRows[1].length; c++) ...<Widget>[
+                Expanded(
+                  child: _buildKeyButton(
+                    key: Key('plate_letter_btn_${_qwertyRows[1][c]}'),
+                    label: _qwertyRows[1][c],
+                    fontSize: 13.5,
+                    onTap: () =>
+                        _appendChar(_qwertyRows[1][c], isLetter: true),
+                  ),
+                ),
+                if (c < _qwertyRows[1].length - 1) const SizedBox(width: 4),
+              ],
+            ],
           ),
+        ),
+        const SizedBox(height: 5),
+        // Row 3: '-' + Z..M + Backspace (9 slots comfortably meeting HIG target width)
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: _buildKeyButton(
+                key: const Key('plate_hyphen_btn'),
+                label: '-',
+                bgColor: const Color(0xFF2C2C2E),
+                fgColor: const Color(0xFFA1A1AA),
+                onTap: () => _appendChar('-', isLetter: false),
+              ),
+            ),
+            const SizedBox(width: 4),
+            for (int c = 0; c < _qwertyRows[2].length; c++) ...<Widget>[
+              Expanded(
+                child: _buildKeyButton(
+                  key: Key('plate_letter_btn_${_qwertyRows[2][c]}'),
+                  label: _qwertyRows[2][c],
+                  fontSize: 13.5,
+                  onTap: () =>
+                      _appendChar(_qwertyRows[2][c], isLetter: true),
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+            Expanded(
+              flex: 2,
+              child: _buildKeyButton(
+                key: const Key('plate_backspace_btn'),
+                label: '',
+                bgColor: const Color(0xFF2C2C2E),
+                onTap: _backspace,
+                child: const Icon(
+                  Icons.backspace_outlined,
+                  color: Color(0xFFF5B73B),
+                  size: 18,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -296,136 +383,159 @@ class _TaiwanPlateQuickPadState extends State<TaiwanPlateQuickPad> {
 
   @override
   Widget build(BuildContext context) {
-    final String preview = _composedPreview();
+    final double bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF0F172A),
+        color: Color(0xFF161618),
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 18 + bottomInset),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    borderRadius: const BorderRadius.all(Radius.circular(99)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
               Row(
                 children: <Widget>[
-                  const Icon(
-                    Icons.flash_on_rounded,
-                    color: Color(0xFFF59E0B),
-                    size: 22,
-                  ),
-                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      widget.isZh
-                          ? '台灣車牌與違規態樣單手閃電快選器'
-                          : 'Quick License Plate & Violation Pad',
+                      widget.isZh ? '車牌辨識與快選' : 'Plate OCR & Keypad',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
+                  if (widget.onScanPlateOcr != null)
+                    GestureDetector(
+                      key: const Key('plate_ocr_scan_btn'),
+                      onTap: _isScanningOcr ? null : _triggerOcrScan,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5B73B).withValues(alpha: 0.18),
+                          borderRadius:
+                              const BorderRadius.all(Radius.circular(999)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            if (_isScanningOcr)
+                              const SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.8,
+                                  color: Color(0xFFF5B73B),
+                                ),
+                              )
+                            else
+                              const Icon(
+                                Icons.document_scanner_rounded,
+                                size: 14,
+                                color: Color(0xFFF5B73B),
+                              ),
+                            const SizedBox(width: 5),
+                            Text(
+                              widget.isZh ? 'AI 辨識車牌' : 'Scan Plate',
+                              style: const TextStyle(
+                                color: Color(0xFFF5B73B),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(
                       Icons.close_rounded,
-                      color: Color(0xFF94A3B8),
+                      color: Color(0xFF8E8E93),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
+                  horizontal: 12,
+                  vertical: 4,
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.all(Radius.circular(10)),
-                  border: Border.all(
-                    color: const Color(0xFF121212),
-                    width: 2.5,
-                  ),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0A0A0C),
+                  borderRadius: BorderRadius.all(Radius.circular(14)),
                 ),
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      preview,
-                      style: const TextStyle(
-                        color: Color(0xFF121212),
-                        fontSize: 19,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.1,
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: TextField(
+                        key: const Key('plate_custom_input'),
+                        controller: _plateController,
+                        textCapitalization: TextCapitalization.characters,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFF5F5F7),
+                          fontSize: 21,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          fontFeatures: <FontFeature>[
+                            FontFeature.tabularFigures(),
+                          ],
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          hintText: widget.isZh ? '輸入或辨識車牌號碼' : 'ABC-1234',
+                          hintStyle: const TextStyle(
+                            color: Color(0xFF52525B),
+                            fontSize: 16,
+                          ),
+                        ),
+                        onChanged: (_) => setState(() {}),
                       ),
                     ),
-                  ),
+                    GestureDetector(
+                      key: const Key('plate_clear_btn'),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _setPlateText('');
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.cancel_rounded,
+                          color: Color(0xFF636366),
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(height: 10),
+              _buildDigitsRow(),
+              const SizedBox(height: 5),
+              _buildQwertyKeyboard(),
               const SizedBox(height: 12),
-              Text(
-                widget.isZh
-                    ? '1. 點選車牌英文開頭 (自動防 I/O 混淆與補連字號)'
-                    : '1. Select Plate Prefix (Auto Hyphen & I/O Guard)',
-                style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: TaiwanPlateQuickPad.commonPrefixes.map((String pre) {
-                  final bool active = _platePart.startsWith(pre);
-                  return ChoiceChip(
-                    label: Text(
-                      pre,
-                      style: TextStyle(
-                        color: active ? const Color(0xFF121212) : Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                    selected: active,
-                    selectedColor: const Color(0xFFF59E0B),
-                    backgroundColor: const Color(0xFF1E293B),
-                    visualDensity: VisualDensity.compact,
-                    onSelected: (_) => _applyPrefix(pre),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                widget.isZh ? '2. 單手快速輸入後四碼數字' : '2. Tap Rear 4 Digits',
-                style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              _buildDigitGrid(),
-              const SizedBox(height: 10),
-              Text(
-                widget.isZh
-                    ? '3. 一鍵附加違規事實或外勤巡檢標籤'
-                    : '3. Attach Violation or Inspection Tag',
-                style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -433,55 +543,63 @@ class _TaiwanPlateQuickPadState extends State<TaiwanPlateQuickPad> {
                     TaiwanPlateQuickPad.quickTags.map((QuickViolationTag t) {
                   final String label = t.localizedTag(isZh: widget.isZh);
                   final bool selected = _tagPart == label;
-                  return ChoiceChip(
-                    label: Text(
-                      label,
-                      style: TextStyle(
-                        color:
-                            selected ? const Color(0xFF121212) : Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                      ),
-                    ),
-                    selected: selected,
-                    selectedColor: const Color(0xFF10B981),
-                    backgroundColor: const Color(0xFF1E293B),
-                    visualDensity: VisualDensity.compact,
-                    onSelected: (_) {
+                  return GestureDetector(
+                    onTap: () {
                       HapticFeedback.selectionClick();
                       setState(() {
-                        _tagPart = label;
+                        _tagPart = selected ? '' : label;
                       });
                     },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0xFF34C759)
+                            : const Color(0xFF232326),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(999)),
+                      ),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: selected
+                              ? const Color(0xFF09090B)
+                              : const Color(0xFFE4E4E7),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ),
                   );
                 }).toList(),
               ),
               const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
+                height: 48,
+                child: ElevatedButton(
                   key: const Key('apply_plate_quick_pad_btn'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF59E0B),
-                    foregroundColor: const Color(0xFF121212),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: const Color(0xFFF5B73B),
+                    foregroundColor: const Color(0xFF09090B),
+                    elevation: 0,
                     shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderRadius: BorderRadius.all(Radius.circular(14)),
                     ),
                   ),
                   onPressed: () {
-                    HapticFeedback.heavyImpact();
-                    widget.onApplyNote(preview);
+                    HapticFeedback.mediumImpact();
+                    widget.onApplyNote(_composedPreview());
                     Navigator.of(context).pop();
                   },
-                  icon: const Icon(Icons.check_circle_rounded),
-                  label: Text(
-                    widget.isZh
-                        ? '套用至浮水印與 110 報案 ($preview)'
-                        : 'Apply to Watermark ($preview)',
+                  child: Text(
+                    widget.isZh ? '套用備註' : 'Apply',
                     style: const TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),

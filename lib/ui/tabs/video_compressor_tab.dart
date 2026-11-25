@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/native_hardware_bridge.dart';
 import '../../core/activation_quota_engine.dart';
+import '../../core/native_hardware_bridge.dart';
+import '../../core/user_preferences_state.dart';
 import '../../core/video_compression_engine.dart';
+import '../../core/watermark_location_engine.dart';
+import '../widgets/quick_start_guide_sheet.dart';
 
-/// 內建高畫質 4K 行車紀錄與外勤影片樣本模型 (供快速實測與審核員沙盒體驗)
+/// 內建高畫質影片試算樣本模型
 @immutable
 class SampleSourceVideo {
   const SampleSourceVideo({
@@ -18,6 +21,7 @@ class SampleSourceVideo {
     required this.sourceSizeMB,
     required this.totalSeconds,
     required this.originalSpec,
+    this.isRealDeviceVideo = false,
   });
 
   final String id;
@@ -29,13 +33,14 @@ class SampleSourceVideo {
   final double sourceSizeMB;
   final double totalSeconds;
   final String originalSpec;
+  final bool isRealDeviceVideo;
 
   String localizedTitle({required bool isZh}) => isZh ? titleZh : titleEn;
   String localizedLocation({required bool isZh}) =>
       isZh ? locationZh : locationEn;
 }
 
-/// Tab 2：20MB 檢舉影片智能壓縮器（核心付費牆變現引擎）
+/// Tab 2：零偽報真實進度 20MB / 10MB 影片壓縮器（範例試算不扣體驗額度）
 class VideoCompressorTab extends StatefulWidget {
   const VideoCompressorTab({
     super.key,
@@ -43,7 +48,15 @@ class VideoCompressorTab extends StatefulWidget {
     required this.isProUnlocked,
     required this.onRequestPaywall,
     required this.onExportCompleted,
+    this.externalRealVideo,
+    this.usedFreeExports = 0,
+    this.totalSavedMB = 0.0,
+    this.onQuotaUpdated,
     this.isTestMode = false,
+    this.showFirstTimeTip = false,
+    this.onDismissFirstTimeTip,
+    this.preferences = const UserPreferencesState(),
+    this.onPreferencesChanged,
   });
 
   final bool isZh;
@@ -53,42 +66,52 @@ class VideoCompressorTab extends StatefulWidget {
     required CompressionPlan plan,
     required String plateNumber,
     required String address,
+    required double actualOutputMB,
+    required String clipboardSummary,
   }) onExportCompleted;
+  final Map<String, dynamic>? externalRealVideo;
+  final int usedFreeExports;
+  final double totalSavedMB;
+  final void Function(int usedFreeExports, double totalSavedMB)? onQuotaUpdated;
   final bool isTestMode;
+  final bool showFirstTimeTip;
+  final VoidCallback? onDismissFirstTimeTip;
+  final UserPreferencesState preferences;
+  final ValueChanged<UserPreferencesState>? onPreferencesChanged;
 
   static const List<SampleSourceVideo> sampleVideos = <SampleSourceVideo>[
     SampleSourceVideo(
-      id: 'VID_4K_SIGNAL',
-      titleZh: '4K 行車記錄器：變換車道未打方向燈',
-      titleEn: '4K Dashcam: Unsignaled Lane Change',
-      plateNumber: 'ABC-8899',
-      locationZh: '台北市信義區忠孝東路五段22號',
-      locationEn: 'Sec. 5, Zhongxiao E. Rd., Taipei',
+      id: 'VID_4K_FIELD',
+      titleZh: '4K 案場巡檢範例',
+      titleEn: '4K Site Audit Demo',
+      plateNumber: 'SITE-A08 巡檢紀錄',
+      locationZh: '範例案場（試算用）',
+      locationEn: 'Sample Site (Preview)',
       sourceSizeMB: 142.8,
       totalSeconds: 45.0,
-      originalSpec: '4K 60fps HEVC (142.8 MB)',
+      originalSpec: '4K 60fps HEVC',
     ),
     SampleSourceVideo(
-      id: 'VID_4K_PEDESTRIAN',
-      titleZh: 'iPhone 4K 錄影：斑馬線未禮讓行人',
-      titleEn: 'iPhone 4K: Failure to Yield on Crosswalk',
-      plateNumber: 'RCD-5566',
-      locationZh: '台南市東區中華東路三段路口',
-      locationEn: 'Sec. 3, Zhonghua E. Rd., Tainan',
+      id: 'VID_4K_DELIVERY',
+      titleZh: '4K 貨物點交範例',
+      titleEn: '4K Delivery Demo',
+      plateNumber: 'TW-99281 簽收影像',
+      locationZh: '範例物流節點（試算用）',
+      locationEn: 'Sample Logistics Hub',
       sourceSizeMB: 168.4,
       totalSeconds: 50.0,
-      originalSpec: '4K 60fps ProRes/HDR (168.4 MB)',
+      originalSpec: '4K 60fps HDR',
     ),
     SampleSourceVideo(
-      id: 'VID_EPA_LITTER',
-      titleZh: '環保獎金蒐證：停等紅燈亂丟煙蒂',
-      titleEn: 'EPA Reward Clip: Littering Cigarette Butt',
-      plateNumber: 'NML-7788',
-      locationZh: '台中市西屯區台灣大道三段99號',
-      locationEn: 'Sec. 3, Taiwan Blvd., Taichung',
+      id: 'VID_1080P_DASHCAM',
+      titleZh: '1080p 行車影像範例',
+      titleEn: '1080p Dashcam Demo',
+      plateNumber: 'DEMO-CLIP 影像壓縮',
+      locationZh: '範例路段（試算用）',
+      locationEn: 'Sample Road Clip',
       sourceSizeMB: 78.5,
       totalSeconds: 30.0,
-      originalSpec: '1080p 60fps MOV (78.5 MB)',
+      originalSpec: '1080p 60fps MOV',
     ),
   ];
 
@@ -98,24 +121,123 @@ class VideoCompressorTab extends StatefulWidget {
 
 class _VideoCompressorTabState extends State<VideoCompressorTab> {
   int _selectedVideoIndex = 0;
+  SampleSourceVideo? _realPickedVideo;
+  bool _useRealPickedVideo = false;
   ReportTargetPreset _selectedPreset = ReportTargetPreset.trafficPolice20MB;
+  double _trimStartSeconds = 0.0;
   double _trimDurationSeconds = 15.0;
-  double _plateZoomScale = 1.5;
-  bool _burnInWatermark = true;
-  int _usedFreeExports = 0;
-  double _totalSavedMB = 0.0;
+  bool _autoCopySummary = true;
+  late int _usedFreeExports;
+  late double _totalSavedMB;
   bool _isCompressing = false;
   double _compressionProgress = 0.0;
-  StreamSubscription<double>? _compressionSub;
+  StreamSubscription<double>? _demoProgressSub;
+
+  String _formatMmSs(double totalSeconds) {
+    final int safe = totalSeconds.isFinite ? totalSeconds.round().clamp(0, 3599) : 0;
+    final int min = safe ~/ 60;
+    final int sec = safe % 60;
+    return '${min.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+  }
+
+  void _syncCompressorPrefs() {
+    widget.onPreferencesChanged?.call(
+      widget.preferences.copyWith(
+        compressorPreset: _selectedPreset,
+        compressorTrimSeconds: _trimDurationSeconds,
+        autoCopySummary: _autoCopySummary,
+        sampleVideoIndex: _selectedVideoIndex,
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedVideoIndex = widget.preferences.sampleVideoIndex
+        .clamp(0, VideoCompressorTab.sampleVideos.length - 1);
+    _selectedPreset = widget.preferences.compressorPreset;
+    _autoCopySummary = widget.preferences.autoCopySummary;
+    _trimDurationSeconds = widget.preferences.compressorTrimSeconds.clamp(
+      5.0,
+      VideoCompressorTab.sampleVideos[_selectedVideoIndex].totalSeconds,
+    );
+    _usedFreeExports = widget.usedFreeExports;
+    _totalSavedMB = widget.totalSavedMB;
+    if (widget.externalRealVideo != null) {
+      _applyRealVideoMap(widget.externalRealVideo!);
+    }
+    NativeHardwareBridge.setNativeEventHandlers(
+      onVideoCompressionProgress: (double progress) {
+        if (!mounted || !_isCompressing) return;
+        setState(() {
+          _compressionProgress = progress.clamp(0.0, 1.0);
+        });
+      },
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant VideoCompressorTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.preferences != oldWidget.preferences) {
+      _selectedVideoIndex = widget.preferences.sampleVideoIndex
+          .clamp(0, VideoCompressorTab.sampleVideos.length - 1);
+      _selectedPreset = widget.preferences.compressorPreset;
+      _autoCopySummary = widget.preferences.autoCopySummary;
+      _trimDurationSeconds = widget.preferences.compressorTrimSeconds
+          .clamp(5.0, _activeVideo.totalSeconds);
+    }
+    if (widget.usedFreeExports != oldWidget.usedFreeExports) {
+      _usedFreeExports = widget.usedFreeExports;
+    }
+    if (widget.totalSavedMB != oldWidget.totalSavedMB) {
+      _totalSavedMB = widget.totalSavedMB;
+    }
+    if (widget.externalRealVideo != null &&
+        widget.externalRealVideo != oldWidget.externalRealVideo) {
+      _applyRealVideoMap(widget.externalRealVideo!);
+    }
+  }
 
   @override
   void dispose() {
-    _compressionSub?.cancel();
+    _demoProgressSub?.cancel();
     super.dispose();
   }
 
-  SampleSourceVideo get _activeVideo =>
-      VideoCompressorTab.sampleVideos[_selectedVideoIndex];
+  void _applyRealVideoMap(Map<String, dynamic> meta) {
+    final double sizeMB =
+        ((meta['sizeMB'] as num?)?.toDouble() ?? 25.0).clamp(0.2, 4096.0);
+    final double durationSec =
+        ((meta['durationSeconds'] as num?)?.toDouble() ?? 15.0)
+            .clamp(5.0, 600.0);
+    final String fileName = (meta['fileName']?.toString() ?? 'iPhone_Clip.mov');
+    final SampleSourceVideo real = SampleSourceVideo(
+      id: 'REAL_DEVICE_VIDEO',
+      titleZh: fileName,
+      titleEn: fileName,
+      plateNumber: fileName.length > 20 ? fileName.substring(0, 20) : fileName,
+      locationZh: 'iPhone 相簿匯入',
+      locationEn: 'iPhone Photos',
+      sourceSizeMB: sizeMB,
+      totalSeconds: durationSec,
+      originalSpec:
+          '${durationSec.toStringAsFixed(0)}s · ${sizeMB.toStringAsFixed(1)} MB',
+      isRealDeviceVideo: true,
+    );
+    _realPickedVideo = real;
+    _useRealPickedVideo = true;
+    _trimStartSeconds = 0.0;
+    _trimDurationSeconds = _trimDurationSeconds.clamp(5.0, durationSec);
+  }
+
+  SampleSourceVideo get _activeVideo {
+    if (_useRealPickedVideo && _realPickedVideo != null) {
+      return _realPickedVideo!;
+    }
+    return VideoCompressorTab.sampleVideos[_selectedVideoIndex];
+  }
 
   CompressionPlan _currentPlan() {
     final SampleSourceVideo video = _activeVideo;
@@ -125,415 +247,78 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
       sourceSizeMB: video.sourceSizeMB,
       clipDurationSeconds: safeTrim,
       preset: _selectedPreset,
-      burnInWatermark: _burnInWatermark,
+      burnInWatermark: _autoCopySummary,
     );
   }
-  Color _clarityBadgeColor(PlateClarityGrade grade) {
-    switch (grade) {
-      case PlateClarityGrade.ultraSharp:
-        return const Color(0xFF10B981);
-      case PlateClarityGrade.clearStandard:
-        return const Color(0xFF0284C7);
-      case PlateClarityGrade.lowBitrateWarning:
-        return const Color(0xFFF59E0B);
+
+  String _shortPresetLabel(ReportTargetPreset preset) {
+    switch (preset) {
+      case ReportTargetPreset.trafficPolice20MB:
+        return widget.isZh ? '20MB 標準' : '20MB';
+      case ReportTargetPreset.epa10MB:
+        return widget.isZh ? '10MB 精簡' : '10MB';
+      case ReportTargetPreset.archive50MB:
+        return widget.isZh ? '50MB 高畫質' : '50MB';
     }
   }
 
-  String _clarityBadgeLabel(PlateClarityGrade grade) {
+  Color _clarityColor(PlateClarityGrade grade) {
     switch (grade) {
       case PlateClarityGrade.ultraSharp:
-        return widget.isZh ? '車牌極致銳利' : 'PLATE ULTRA SHARP';
+        return const Color(0xFF34C759);
       case PlateClarityGrade.clearStandard:
-        return widget.isZh ? '車牌標準清晰' : 'PLATE CLEAR';
+        return const Color(0xFF64D2FF);
       case PlateClarityGrade.lowBitrateWarning:
-        return widget.isZh ? '建議縮短秒數' : 'TRIM ADVISED';
+        return const Color(0xFFF5B73B);
+    }
+  }
+
+  String _clarityLabel(PlateClarityGrade grade) {
+    switch (grade) {
+      case PlateClarityGrade.ultraSharp:
+        return widget.isZh ? '高清晰度' : 'Ultra Sharp';
+      case PlateClarityGrade.clearStandard:
+        return widget.isZh ? '標準清晰' : 'Clear';
+      case PlateClarityGrade.lowBitrateWarning:
+        return widget.isZh ? '建議縮短秒數' : 'Trim Advised';
     }
   }
 
   Future<void> _pickRealVideo() async {
-    final sm = ScaffoldMessenger.of(context);
-    final r = await NativeHardwareBridge
-      .pickVideoFromPhotos();
-    if (mounted == false) return;
-    final s = r is Map ? '✅ 已載入' : '🎬 相簿就緒';
-    sm.showSnackBar(SnackBar(content:Text(s)));}
-  Widget _buildVideoSelectorAndPlateLoupe(CompressionPlan plan) {
-    final SampleSourceVideo video = _activeVideo;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
-        border: Border.all(color: const Color(0xFF334155)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              const Icon(
-                Icons.video_file_rounded,
-                color: Color(0xFFF59E0B),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  widget.isZh
-                      ? '步驟 1：選擇原始高畫質影片與車牌放大檢視'
-                      : 'Step 1: Select Source Video & Plate Loupe',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
+    HapticFeedback.selectionClick();
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final Map<String, dynamic>? picked =
+        await NativeHardwareBridge.pickVideoFromPhotos(
+      isTestMode: widget.isTestMode,
+    );
+    if (!mounted) return;
+    if (picked != null) {
+      widget.onDismissFirstTimeTip?.call();
+      setState(() {
+        _applyRealVideoMap(picked);
+      });
+      final SampleSourceVideo v = _activeVideo;
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1F1F23),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children:<Widget>[ActionChip(key:const Key('pick_video_btn'),label:Text(widget.isZh?'從相簿選片':'Pick Video'),onPressed:_isCompressing?null:_pickRealVideo),const SizedBox(width:8),...List<Widget>.generate(
-                VideoCompressorTab.sampleVideos.length,
-                (int idx) {
-                  final SampleSourceVideo item =
-                      VideoCompressorTab.sampleVideos[idx];
-                  final bool isSelected = _selectedVideoIndex == idx;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      key: Key('sample_video_chip_$idx'),
-                      label: Text(
-                        '${item.localizedTitle(isZh: widget.isZh)} (${item.sourceSizeMB.toStringAsFixed(0)}MB)',
-                        style: TextStyle(
-                          color: isSelected
-                              ? const Color(0xFF121212)
-                              : Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      selected: isSelected,
-                      selectedColor: const Color(0xFFF59E0B),
-                      backgroundColor: const Color(0xFF0F172A),
-                      onSelected: _isCompressing
-                          ? null
-                          : (_) {
-                              HapticFeedback.selectionClick();
-                              setState(() {
-                                _selectedVideoIndex = idx;
-                                _trimDurationSeconds = _trimDurationSeconds
-                                    .clamp(5.0, item.totalSeconds);
-                              });
-                            },
-                    ),
-                  );
-                },
-              ),],
+          content: Text(
+            widget.isZh
+                ? '已載入真實影片（${v.sourceSizeMB.toStringAsFixed(1)} MB）'
+                : 'Loaded real video (${v.sourceSizeMB.toStringAsFixed(1)} MB)',
+            style: const TextStyle(
+              color: Color(0xFF34C759),
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
-          // 車牌局部放大檢視鏡 (1.0x / 1.5x / 2.5x)
-          ClipRRect(
-            borderRadius: const BorderRadius.all(Radius.circular(14)),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF090D16),
-                borderRadius: const BorderRadius.all(Radius.circular(14)),
-                border: Border.all(color: const Color(0xFF475569)),
-              ),
-              child: Column(
-                children: <Widget>[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      Flexible(
-                        child: Text(
-                          video.originalSpec,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _clarityBadgeColor(plan.clarityGrade),
-                          borderRadius:
-                              const BorderRadius.all(Radius.circular(6)),
-                        ),
-                        child: Text(
-                          '${_clarityBadgeLabel(plan.clarityGrade)} • ${plan.formattedVideoMbps}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  AnimatedScale(
-                    scale: _plateZoomScale,
-                    duration: const Duration(milliseconds: 200),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(6)),
-                        border: Border.all(
-                          color: const Color(0xFF121212),
-                          width: 2.5,
-                        ),
-                      ),
-                      child: Text(
-                        video.plateNumber,
-                        style: const TextStyle(
-                          color: Color(0xFF121212),
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: <double>[1.0, 1.5, 2.2].map((double zoom) {
-                      final bool active =
-                          (_plateZoomScale - zoom).abs() < 0.05;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: active
-                                ? const Color(0xFFF59E0B)
-                                : const Color(0xFF1E293B),
-                            foregroundColor: active
-                                ? const Color(0xFF121212)
-                                : Colors.white,
-                            visualDensity: VisualDensity.compact,
-                            side: BorderSide(
-                              color: active
-                                  ? const Color(0xFFF59E0B)
-                                  : const Color(0xFF475569),
-                            ),
-                          ),
-                          onPressed: () {
-                            HapticFeedback.selectionClick();
-                            setState(() {
-                              _plateZoomScale = zoom;
-                            });
-                          },
-                          child: Text(
-                            '${zoom.toStringAsFixed(1)}x ${widget.isZh ? "車牌放大" : "Zoom"}',
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
   }
 
-  Widget _buildTrimAndPresetControls(CompressionPlan plan) {
-    final SampleSourceVideo video = _activeVideo;
-    final double safeTrim =
-        _trimDurationSeconds.clamp(5.0, video.totalSeconds);
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
-        border: Border.all(color: const Color(0xFF334155)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              const Icon(
-                Icons.tune_rounded,
-                color: Color(0xFFF59E0B),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  widget.isZh
-                      ? '步驟 2：鎖定目標平台容量與黃金秒數裁切'
-                      : 'Step 2: Lock Target Limit & Trim Duration',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // 目標檢舉系統容量預設選擇 (20MB 警局 / 10MB 環保局 / 50MB 事故歸檔)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ReportTargetPreset.values.map((ReportTargetPreset p) {
-              final bool selected = _selectedPreset == p;
-              return ChoiceChip(
-                label: Text(
-                  p.localizedTitle(isZh: widget.isZh),
-                  style: TextStyle(
-                    color: selected ? const Color(0xFF121212) : Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                selected: selected,
-                selectedColor: const Color(0xFFF59E0B),
-                backgroundColor: const Color(0xFF0F172A),
-                onSelected: _isCompressing
-                    ? null
-                    : (_) {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          _selectedPreset = p;
-                        });
-                      },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 12),
-          // 快速裁切秒數選擇 (10s / 15s / 30s / 45s)
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  widget.isZh
-                      ? '裁切關鍵違規區間：${safeTrim.toStringAsFixed(0)} 秒'
-                      : 'Trim Clip Duration: ${safeTrim.toStringAsFixed(0)}s',
-                  style: const TextStyle(
-                    color: Color(0xFFE2E8F0),
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              for (final int sec in VideoCompressionEngine.quickTrimPresets)
-                if (sec <= video.totalSeconds)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 6),
-                    child: InkWell(
-                      onTap: _isCompressing
-                          ? null
-                          : () {
-                              HapticFeedback.selectionClick();
-                              setState(() {
-                                _trimDurationSeconds = sec
-                                    .toDouble()
-                                    .clamp(5.0, video.totalSeconds);
-                              });
-                            },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: (safeTrim - sec).abs() < 0.5
-                              ? const Color(0xFFF59E0B)
-                              : const Color(0xFF0F172A),
-                          borderRadius:
-                              const BorderRadius.all(Radius.circular(6)),
-                        ),
-                        child: Text(
-                          '${sec}s',
-                          style: TextStyle(
-                            color: (safeTrim - sec).abs() < 0.5
-                                ? const Color(0xFF121212)
-                                : const Color(0xFFCBD5E1),
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-            ],
-          ),
-          Slider(
-            value: safeTrim,
-            min: 5.0,
-            max: video.totalSeconds,
-            divisions: (video.totalSeconds - 5.0).round().clamp(1, 100),
-            activeColor: const Color(0xFFF59E0B),
-            inactiveColor: const Color(0xFF0F172A),
-            onChanged: _isCompressing
-                ? null
-                : (double val) {
-                    setState(() {
-                      _trimDurationSeconds = val.clamp(5.0, video.totalSeconds);
-                    });
-                  },
-          ),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  widget.isZh
-                      ? '轉碼時同步烙印時間與地址防偽浮水印'
-                      : 'Burn-in Timestamp & GPS Watermark During Export',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Switch.adaptive(
-                activeTrackColor: const Color(0xFFF59E0B),
-                value: _burnInWatermark,
-                onChanged: _isCompressing
-                    ? null
-                    : (bool val) {
-                        setState(() {
-                          _burnInWatermark = val;
-                        });
-                      },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
   QuotaStatusSnapshot _currentQuota() {
     return ActivationQuotaEngine.evaluateGate(
       isProUnlocked: widget.isProUnlocked,
@@ -542,11 +327,72 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
     );
   }
 
-  void _handleStartExport(CompressionPlan plan) {
+  Future<void> _handleStartExport(CompressionPlan plan) async {
     if (_isCompressing) return;
+    widget.onDismissFirstTimeTip?.call();
     final SampleSourceVideo video = _activeVideo;
-    final QuotaStatusSnapshot quota = _currentQuota();
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
+    // 內建範例影片僅作試算示範，絕對不扣免費體驗額度！
+    if (!video.isRealDeviceVideo) {
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _isCompressing = true;
+        _compressionProgress = 0.0;
+      });
+      _demoProgressSub?.cancel();
+      _demoProgressSub = VideoCompressionEngine.executeCompressionStream(
+        plan: plan,
+        isTestMode: widget.isTestMode,
+      ).listen(
+        (double progress) {
+          if (!mounted) return;
+          setState(() => _compressionProgress = progress);
+        },
+        onDone: () async {
+          if (!mounted) return;
+          final String nowTs =
+              WatermarkLocationEngine.formatLocalTimestamp(DateTime.now());
+          final String summary = VideoCompressionEngine.buildClipboardSummary(
+            plan: plan,
+            timestampText: nowTs,
+            addressText: video.localizedLocation(isZh: widget.isZh),
+            plateOrNote: video.plateNumber,
+            isZh: widget.isZh,
+          );
+          if (_autoCopySummary) {
+            await Clipboard.setData(ClipboardData(text: summary));
+          }
+          if (!mounted) return;
+          setState(() {
+            _isCompressing = false;
+            _compressionProgress = 1.0;
+          });
+          messenger.showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: const Color(0xFF1F1F23),
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
+              content: Text(
+                widget.isZh
+                    ? '範例預估計算完成（${plan.formattedEstimatedSize}・未扣真實額度，點右上方「選取影片」可轉碼真實影片）'
+                    : 'Demo preview done (${plan.formattedEstimatedSize} • Quota untouched). Tap Pick Video for real clips.',
+                style: const TextStyle(
+                  color: Color(0xFFF5B73B),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    // 以下為真實裝置影片轉碼流程：必須成功存回相簿才扣除額度，絕不偽造成功
+    final QuotaStatusSnapshot quota = _currentQuota();
     if (quota.decision == ExportGateDecision.interceptWithPaywall) {
       HapticFeedback.mediumImpact();
       final String reason = ActivationQuotaEngine.buildPostAhaPaywallReason(
@@ -563,224 +409,714 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
     HapticFeedback.heavyImpact();
     setState(() {
       _isCompressing = true;
-      _compressionProgress = 0.0;
+      _compressionProgress = 0.05;
     });
 
-    _compressionSub?.cancel();
-    _compressionSub = VideoCompressionEngine.executeCompressionStream(
-      plan: plan,
-      isTestMode: widget.isTestMode,
-    ).listen(
-      (double progress) {
-        if (!mounted) return;
-        setState(() {
-          _compressionProgress = progress;
-        });
-      },
-      onDone: () async {
-        if (!mounted) return;
-        final QuotaStatusSnapshot updatedQuota =
-            ActivationQuotaEngine.recordSuccessfulExport(
-          current: _currentQuota(),
-          sourceSizeMB: plan.sourceSizeMB,
-          estimatedOutputMB: plan.estimatedOutputMB,
-        );
-        setState(() {
-          _isCompressing = false;
-          _compressionProgress = 1.0;
-          _usedFreeExports = updatedQuota.usedFreeExports;
-          _totalSavedMB = updatedQuota.totalSavedMB;
-        });
+    final double maxStart = (video.totalSeconds - plan.clipDurationSeconds)
+        .clamp(0.0, video.totalSeconds);
+    final double safeStart = _trimStartSeconds.clamp(0.0, maxStart);
 
-        final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-        await NativeHardwareBridge.compressAndSaveRealVideo(trimSeconds: plan.clipDurationSeconds, isTestMode: widget.isTestMode);
-        final String summary = VideoCompressionEngine.buildClipboardSummary(
-          plan: plan,
-          timestampText: '2026/11/15 14:30:00',
-          addressText: video.localizedLocation(isZh: widget.isZh),
-          plateOrNote: video.plateNumber,
-          isZh: widget.isZh,
-        );
-        await Clipboard.setData(ClipboardData(text: summary));
-        if (!mounted) return;
+    final Map<String, dynamic>? nativeRes = widget.isTestMode
+        ? <String, dynamic>{
+            'ok': true,
+            'savedToPhotos': true,
+            'outputMB': plan.estimatedOutputMB,
+          }
+        : await NativeHardwareBridge.compressAndSaveRealVideo(
+            startSeconds: safeStart,
+            trimSeconds: plan.clipDurationSeconds,
+            targetLimitMB: plan.targetLimitMB,
+            isTestMode: widget.isTestMode,
+          );
 
-        widget.onExportCompleted(
-          plan: plan,
-          plateNumber: video.plateNumber,
-          address: video.localizedLocation(isZh: widget.isZh),
-        );
+    if (!mounted) return;
 
-        messenger.showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFF10B981),
-            content: Text(
-              widget.isZh
-                  ? '🎉 壓縮完成 (${plan.formattedEstimatedSize})！已存入案件庫並複製時間地點摘要至剪貼簿！'
-                  : '🎉 Exported (${plan.formattedEstimatedSize})! Saved to vault & copied summary!',
-              style: const TextStyle(fontWeight: FontWeight.w800),
+    final bool ok = nativeRes != null &&
+        nativeRes['ok'] == true &&
+        nativeRes['savedToPhotos'] == true;
+    if (!ok) {
+      final String errCode =
+          nativeRes?['errorCode']?.toString() ?? 'TRANSCODE_FAILED';
+      final bool isPhotoDenied = errCode == 'PHOTO_PERMISSION_DENIED';
+      setState(() {
+        _isCompressing = false;
+        _compressionProgress = 0.0;
+      });
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1F1F23),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+          content: Text(
+            isPhotoDenied
+                ? (widget.isZh
+                    ? '未獲相簿寫入權限，影片未儲存且未扣除體驗額度'
+                    : 'Photos permission denied. File not saved; quota untouched.')
+                : (widget.isZh
+                    ? '硬體轉碼或存檔失敗，未扣除您的體驗額度'
+                    : 'Compression failed; your export quota was not charged.'),
+            style: const TextStyle(
+              color: Color(0xFFFF453A),
+              fontWeight: FontWeight.w600,
             ),
           ),
-        );
-      },
+          action: isPhotoDenied
+              ? SnackBarAction(
+                  label: widget.isZh ? '前往設定' : 'Settings',
+                  textColor: const Color(0xFFF5B73B),
+                  onPressed: () {
+                    NativeHardwareBridge.openAppSettings(
+                      isTestMode: widget.isTestMode,
+                    );
+                  },
+                )
+              : null,
+        ),
+      );
+      return;
+    }
+
+    final double actualMB = (nativeRes['outputMB'] as num?)?.toDouble() ??
+        plan.estimatedOutputMB;
+
+    final QuotaStatusSnapshot updatedQuota =
+        ActivationQuotaEngine.recordSuccessfulExport(
+      current: quota,
+      sourceSizeMB: plan.sourceSizeMB,
+      estimatedOutputMB: actualMB,
     );
-  }
 
-  Widget _buildStatMetricColumn(
-    String label,
-    String value,
-    Color valueColor,
-  ) {
-    return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF94A3B8),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+    setState(() {
+      _isCompressing = false;
+      _compressionProgress = 1.0;
+      _usedFreeExports = updatedQuota.usedFreeExports;
+      _totalSavedMB = updatedQuota.totalSavedMB;
+    });
+    widget.onQuotaUpdated?.call(_usedFreeExports, _totalSavedMB);
+
+    final String nowTimestamp =
+        WatermarkLocationEngine.formatLocalTimestamp(DateTime.now());
+    final String summary = VideoCompressionEngine.buildClipboardSummary(
+      plan: plan,
+      timestampText: nowTimestamp,
+      addressText: video.localizedLocation(isZh: widget.isZh),
+      plateOrNote: video.plateNumber,
+      isZh: widget.isZh,
+    );
+    if (_autoCopySummary) {
+      await Clipboard.setData(ClipboardData(text: summary));
+    }
+    if (!mounted) return;
+
+    widget.onExportCompleted(
+      plan: plan,
+      plateNumber: video.plateNumber,
+      address: video.localizedLocation(isZh: widget.isZh),
+      actualOutputMB: actualMB,
+      clipboardSummary: summary,
+    );
+
+    final String sizeStr = '${actualMB.toStringAsFixed(1)} MB';
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF1F1F23),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
+        content: Text(
+          widget.isZh
+              ? '壓縮完成 ($sizeStr)，已存至系統相簿'
+              : 'Saved to Photos ($sizeStr)',
+          style: const TextStyle(
+            color: Color(0xFF34C759),
+            fontWeight: FontWeight.w600,
           ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: valueColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildCompressionSummaryAndCta(CompressionPlan plan) {
+  Widget _buildVideoSourceCard(CompressionPlan plan) {
+    final SampleSourceVideo video = _activeVideo;
+    final Color clarityColor = _clarityColor(plan.clarityGrade);
+
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
-        border: Border.all(
-          color: const Color(0xFFF59E0B).withValues(alpha: 0.7),
-          width: 1.5,
-        ),
+      decoration: const BoxDecoration(
+        color: Color(0xFF161618),
+        borderRadius: BorderRadius.all(Radius.circular(20)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             children: <Widget>[
-              _buildStatMetricColumn(
-                widget.isZh ? '原始檔案大小' : 'Original Size',
-                '${plan.sourceSizeMB.toStringAsFixed(1)} MB',
-                const Color(0xFFEF4444),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      video.localizedTitle(isZh: widget.isZh),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: clarityColor,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            '${_clarityLabel(plan.clarityGrade)} · ${plan.formattedVideoMbps}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF8E8E93),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const Icon(
-                Icons.double_arrow_rounded,
-                color: Color(0xFFF59E0B),
-                size: 20,
-              ),
-              _buildStatMetricColumn(
-                widget.isZh ? '智能壓縮後容量' : 'Target Output',
-                plan.formattedEstimatedSize,
-                const Color(0xFF10B981),
-              ),
-              const SizedBox(width: 6),
-              _buildStatMetricColumn(
-                widget.isZh ? '瘦身節省幅度' : 'Size Saved',
-                '-${plan.savedPercentage.toStringAsFixed(1)}%',
-                const Color(0xFFF59E0B),
+              const SizedBox(width: 10),
+              GestureDetector(
+                key: const Key('pick_video_btn'),
+                onTap: _isCompressing ? null : _pickRealVideo,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF5F5F7),
+                    borderRadius: BorderRadius.all(Radius.circular(999)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      const Icon(
+                        Icons.photo_library_outlined,
+                        size: 15,
+                        color: Color(0xFF09090B),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _useRealPickedVideo
+                            ? (widget.isZh ? '更換影片' : 'Change')
+                            : (widget.isZh ? '選取影片' : 'Pick Video'),
+                        style: const TextStyle(
+                          color: Color(0xFF09090B),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E293B),
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-            ),
-            child: Text(
-              widget.isZh ? plan.advisoryMessageZh : plan.advisoryMessageEn,
-              style: const TextStyle(
-                color: Color(0xFFE2E8F0),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          if (_isCompressing) ...<Widget>[
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: _compressionProgress,
-              backgroundColor: const Color(0xFF1E293B),
-              color: const Color(0xFFF59E0B),
-              minHeight: 8,
-              borderRadius: const BorderRadius.all(Radius.circular(6)),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              widget.isZh
-                  ? '⚡ H.264 目標位元率 (${plan.formattedVideoMbps}) 硬體轉碼中... ${(_compressionProgress * 100).round()}%'
-                  : '⚡ Hardware encoding at ${plan.formattedVideoMbps}... ${(_compressionProgress * 100).round()}%',
-              style: const TextStyle(
-                color: Color(0xFFF59E0B),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              key: const Key('compressor_export_cta_btn'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF59E0B),
-                foregroundColor: const Color(0xFF121212),
-                padding: const EdgeInsets.symmetric(
-                  vertical: 15,
-                  horizontal: 16,
-                ),
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(14)),
+          const SizedBox(height: 20),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      widget.isZh ? '原始容量' : 'Original',
+                      style: const TextStyle(
+                        color: Color(0xFF8E8E93),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${plan.sourceSizeMB.toStringAsFixed(1)} MB',
+                        style: const TextStyle(
+                          color: Color(0xFFA1A1AA),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: <FontFeature>[
+                            FontFeature.tabularFigures(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              onPressed:
-                  _isCompressing ? null : () => _handleStartExport(plan),
-              icon: Icon(
-                widget.isProUnlocked
-                    ? Icons.rocket_launch_rounded
-                    : Icons.lock_open_rounded,
-                size: 20,
+              const Padding(
+                padding: EdgeInsets.only(bottom: 5),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Color(0xFF636366),
+                  size: 18,
+                ),
               ),
-              label: FittedBox(
-                fit: BoxFit.scaleDown,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    Text(
+                      widget.isZh ? '目標輸出' : 'Target',
+                      style: const TextStyle(
+                        color: Color(0xFF8E8E93),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        plan.formattedEstimatedSize,
+                        style: const TextStyle(
+                          color: Color(0xFF34C759),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: <FontFeature>[
+                            FontFeature.tabularFigures(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF232326),
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                ),
                 child: Text(
-                  ActivationQuotaEngine.buildCtaButtonLabel(
-                    quota: _currentQuota(),
-                    formattedEstimatedSize: plan.formattedEstimatedSize,
-                    isZh: widget.isZh,
-                  ),
+                  '-${plan.savedPercentage.toStringAsFixed(0)}%',
                   style: const TextStyle(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w900,
+                    color: Color(0xFFF5F5F7),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildControlsCard(CompressionPlan plan) {
+    final SampleSourceVideo video = _activeVideo;
+    final double maxSec = video.totalSeconds < 5.0 ? 5.0 : video.totalSeconds;
+    final double safeTrim = _trimDurationSeconds.clamp(5.0, maxSec);
+    final double maxStart = (maxSec - safeTrim).clamp(0.0, maxSec);
+    final double safeStart = _trimStartSeconds.clamp(0.0, maxStart);
+    final double safeEnd = (safeStart + safeTrim).clamp(safeStart + 5.0, maxSec);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Color(0xFF161618),
+        borderRadius: BorderRadius.all(Radius.circular(20)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: const BoxDecoration(
+              color: Color(0xFF0A0A0C),
+              borderRadius: BorderRadius.all(Radius.circular(11)),
+            ),
+            child: Row(
+              children: ReportTargetPreset.values.map((ReportTargetPreset p) {
+                final bool selected = _selectedPreset == p;
+                return Expanded(
+                  child: GestureDetector(
+                    key: Key('compressor_preset_${p.name}'),
+                    onTap: _isCompressing
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _selectedPreset = p);
+                            _syncCompressorPrefs();
+                          },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0xFF2C2C2E)
+                            : Colors.transparent,
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(8)),
+                      ),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _shortPresetLabel(p),
+                            style: TextStyle(
+                              color: selected
+                                  ? Colors.white
+                                  : const Color(0xFF8E8E93),
+                              fontSize: 12.5,
+                              fontWeight:
+                                  selected ? FontWeight.w700 : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 6,
+            runSpacing: 8,
+            children: <Widget>[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    widget.isZh
+                        ? '裁切長度 · ${safeTrim.toStringAsFixed(0)} 秒'
+                        : 'Trim · ${safeTrim.toStringAsFixed(0)}s',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_formatMmSs(safeStart)} – ${_formatMmSs(safeEnd)}',
+                    style: const TextStyle(
+                      color: Color(0xFFF5B73B),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  for (final int sec in VideoCompressionEngine.quickTrimPresets)
+                    if (sec <= maxSec)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: GestureDetector(
+                          key: Key('compressor_trim_chip_$sec'),
+                          onTap: _isCompressing
+                              ? null
+                              : () {
+                                  HapticFeedback.selectionClick();
+                                  final double nextDur =
+                                      sec.toDouble().clamp(5.0, maxSec);
+                                  final double nextStart =
+                                      (safeStart + nextDur <= maxSec)
+                                          ? safeStart
+                                          : (maxSec - nextDur).clamp(0.0, maxSec);
+                                  setState(() {
+                                    _trimStartSeconds = nextStart;
+                                    _trimDurationSeconds = nextDur;
+                                  });
+                                  _syncCompressorPrefs();
+                                },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: (safeTrim - sec).abs() < 0.5
+                                  ? const Color(0xFFF5B73B)
+                                  : const Color(0xFF232326),
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(7)),
+                            ),
+                            child: Text(
+                              '${sec}s',
+                              style: TextStyle(
+                                color: (safeTrim - sec).abs() < 0.5
+                                    ? const Color(0xFF09090B)
+                                    : const Color(0xFF8E8E93),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                ],
+              ),
+            ],
+          ),
+          RangeSlider(
+            key: const Key('compressor_trim_range_slider'),
+            values: RangeValues(safeStart, safeEnd),
+            min: 0.0,
+            max: maxSec,
+            divisions: maxSec.round().clamp(5, 120),
+            onChanged: _isCompressing
+                ? null
+                : (RangeValues vals) {
+                    double nextStart = vals.start;
+                    double nextEnd = vals.end;
+                    if (nextEnd - nextStart < 5.0) {
+                      if ((nextStart - safeStart).abs() > 0.05) {
+                        nextStart = (nextEnd - 5.0).clamp(0.0, maxSec);
+                        nextEnd = (nextStart + 5.0).clamp(5.0, maxSec);
+                      } else {
+                        nextEnd = (nextStart + 5.0).clamp(5.0, maxSec);
+                        nextStart = (nextEnd - 5.0).clamp(0.0, maxSec);
+                      }
+                    }
+                    setState(() {
+                      _trimStartSeconds = nextStart;
+                      _trimDurationSeconds =
+                          (nextEnd - nextStart).clamp(5.0, maxSec);
+                    });
+                  },
+            onChangeEnd: _isCompressing ? null : (_) => _syncCompressorPrefs(),
+          ),
+          Divider(color: Colors.white.withValues(alpha: 0.06), height: 14),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  widget.isZh
+                      ? '匯出後自動複製時間地點文字摘要'
+                      : 'Auto-copy timestamp text summary',
+                  style: const TextStyle(
+                    color: Color(0xFFD4D4D8),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Switch.adaptive(
+                key: const Key('compressor_autocopy_switch'),
+                activeTrackColor: const Color(0xFFF5B73B),
+                value: _autoCopySummary,
+                onChanged: _isCompressing
+                    ? null
+                    : (bool val) {
+                        setState(() => _autoCopySummary = val);
+                        _syncCompressorPrefs();
+                      },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubtleSamplesRow() {
+    if (_useRealPickedVideo) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(
+          onPressed: _isCompressing
+              ? null
+              : () {
+                  setState(() => _useRealPickedVideo = false);
+                },
+          child: Text(
+            widget.isZh ? '切換回內建範例試算' : 'Switch back to Demo Clips',
+            style: const TextStyle(
+              color: Color(0xFF8E8E93),
+              fontSize: 12,
+            ),
+          ),
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          widget.isZh
+              ? '內建範例試算（不消耗真實免費體驗次數）'
+              : 'Demo Preview Clips (No Export Quota Used)',
+          style: const TextStyle(
+            color: Color(0xFF8E8E93),
+            fontSize: 11.5,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List<Widget>.generate(
+              VideoCompressorTab.sampleVideos.length,
+              (int idx) {
+                final SampleSourceVideo item =
+                    VideoCompressorTab.sampleVideos[idx];
+                final bool selected =
+                    !_useRealPickedVideo && _selectedVideoIndex == idx;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    key: Key('sample_video_chip_$idx'),
+                    onTap: _isCompressing
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _useRealPickedVideo = false;
+                              _selectedVideoIndex = idx;
+                              _trimStartSeconds = 0.0;
+                              _trimDurationSeconds = _trimDurationSeconds.clamp(
+                                5.0,
+                                item.totalSeconds,
+                              );
+                            });
+                            _syncCompressorPrefs();
+                          },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0xFF2C2C2E)
+                            : const Color(0xFF161618),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(999)),
+                      ),
+                      child: Text(
+                        item.localizedTitle(isZh: widget.isZh),
+                        style: TextStyle(
+                          color: selected
+                              ? Colors.white
+                              : const Color(0xFF8E8E93),
+                          fontSize: 11.5,
+                          fontWeight:
+                              selected ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExportFooter(CompressionPlan plan) {
+    final QuotaStatusSnapshot quota = _currentQuota();
+    final SampleSourceVideo video = _activeVideo;
+    final String buttonText = !video.isRealDeviceVideo
+        ? (widget.isZh
+            ? '試算範例壓縮效果 (${plan.formattedEstimatedSize}・不扣額度)'
+            : 'Demo Estimate (${plan.formattedEstimatedSize} • Free)')
+        : ActivationQuotaEngine.buildCtaButtonLabel(
+            quota: quota,
+            formattedEstimatedSize: plan.formattedEstimatedSize,
+            isZh: widget.isZh,
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        if (_isCompressing) ...<Widget>[
+          ClipRRect(
+            borderRadius: const BorderRadius.all(Radius.circular(999)),
+            child: LinearProgressIndicator(
+              value: _compressionProgress,
+              backgroundColor: const Color(0xFF232326),
+              color: const Color(0xFFF5B73B),
+              minHeight: 5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.isZh
+                ? '硬體真實轉碼中 · ${(_compressionProgress * 100).round()}%'
+                : 'Hardware Encoding · ${(_compressionProgress * 100).round()}%',
+            style: const TextStyle(
+              color: Color(0xFFF5B73B),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            key: const Key('compressor_export_cta_btn'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF5B73B),
+              foregroundColor: const Color(0xFF09090B),
+              elevation: 0,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+              ),
+            ),
+            onPressed: _isCompressing ? null : () => _handleStartExport(plan),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                buttonText,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: Text(
+            ActivationQuotaEngine.buildBannerLabel(quota, isZh: widget.isZh),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF8E8E93),
+              fontSize: 11.5,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -788,15 +1124,28 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
   Widget build(BuildContext context) {
     final CompressionPlan plan = _currentPlan();
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          _buildVideoSelectorAndPlateLoupe(plan),
+          if (widget.showFirstTimeTip) ...<Widget>[
+            FirstTimeTipBar(
+              key: const Key('compress_first_tip_bar'),
+              closeKey: const Key('compress_first_tip_close'),
+              text: widget.isZh
+                  ? '點選相簿影片 → 拖曳起訖秒數 → 依目標容量真位元率轉碼'
+                  : 'Pick real video → trim range → hardware bitrate export',
+              onDismiss: widget.onDismissFirstTimeTip,
+            ),
+            const SizedBox(height: 10),
+          ],
+          _buildVideoSourceCard(plan),
           const SizedBox(height: 12),
-          _buildTrimAndPresetControls(plan),
-          const SizedBox(height: 12),
-          _buildCompressionSummaryAndCta(plan),
+          _buildControlsCard(plan),
+          const SizedBox(height: 16),
+          _buildExportFooter(plan),
+          const SizedBox(height: 18),
+          _buildSubtleSamplesRow(),
         ],
       ),
     );

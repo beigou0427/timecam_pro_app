@@ -1,0 +1,7 @@
+"CFBundleDisplayName" = "时间相机 Pro";
+"CFBundleName" = "时间相机 Pro";
+"NSCameraUsageDescription" = "用于拍摄带有实时时间、GPS 坐标与街道地址水印的现场记录照片与视频。";
+"NSLocationWhenInUseUsageDescription" = "用于在拍摄画面实时标记当前街道地址与 GPS 坐标信息。";
+"NSMicrophoneUsageDescription" = "用于录制现场与行车记录视频时同步收录环境音频。";
+"NSPhotoLibraryAddUsageDescription" = "用于将添加水印后的照片与压缩完成的记录视频保存至您的相册。";
+"NSPhotoLibraryUsageDescription" = "用于从相册选取视频进行区间裁剪与 20MB / 10MB 容量压缩。";

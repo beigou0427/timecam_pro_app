@@ -65,11 +65,16 @@ class StatutoryUrgencyEngine {
   }) {
     if (!summary.hasUrgentAlert) {
       return isZh
-          ? '✅ 案件庫安全：目前 ${summary.pendingCount} 件待辦皆在 7 日法定舉發期內'
-          : '✅ Vault Safe: ${summary.pendingCount} pending case(s) within 7-day limit';
+          ? '目前 ${summary.pendingCount} 件待處理紀錄皆在 7 日參考期限內'
+          : '${summary.pendingCount} pending record(s) within 7-day reference window';
+    }
+    if (summary.highestLevel == UrgencyLevel.expired) {
+      return isZh
+          ? '注意：有 ${summary.expiringWithin48hCount} 件待處理紀錄已逾 7 日舉發參考期'
+          : 'Notice: ${summary.expiringWithin48hCount} pending record(s) passed the 7-day window';
     }
     return isZh
-        ? '🚨 期限警報：有 ${summary.expiringWithin48hCount} 件違規存證僅剩 ${summary.mostUrgentHoursLeft} 小時即將逾越 7 日舉發期！'
-        : '🚨 Urgency Alert: ${summary.expiringWithin48hCount} case(s) expire in ${summary.mostUrgentHoursLeft}h (7-day limit)!';
+        ? '時效提醒：有 ${summary.expiringWithin48hCount} 件待處理紀錄僅剩 ${summary.mostUrgentHoursLeft} 小時內屆滿 7 日參考期'
+        : 'Deadline Alert: ${summary.expiringWithin48hCount} record(s) have ${summary.mostUrgentHoursLeft}h left in 7-day window';
   }
 }

@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>時間相機 Pro</string>
+	<string>TimeCam Pro</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -31,15 +31,15 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>用於拍攝帶有精準時間、GPS座標與街道地址浮水印的現場紀錄照片與影片 (Used to capture photos and videos with timestamp and GPS location watermarks for field documentation).</string>
+	<string>Used to capture field documentation photos and videos with live timestamp and GPS watermarks.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>用於在浮水印中自動標記當前街道地址與GPS座標，以及生成110簡訊報案位置 (Used to display accurate street address and GPS coordinates on watermarks and assist in emergency SMS reporting).</string>
+	<string>Used to display street addresses and GPS coordinates on field watermarks during capture.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>用於錄製現場蒐證與行車紀錄影片時同步收錄環境音訊 (Used to record ambient audio during field documentation video recording).</string>
+	<string>Used to record ambient audio during field documentation video capture.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>用於將疊加浮水印後的照片與壓縮處理完成的紀錄影片儲存至您的相簿 (Used to save watermarked photos and compressed videos to your photo library).</string>
+	<string>Used to save watermarked photos and compressed videos to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>用於匯入行車紀錄或現場影片以進行區間裁切與20MB智能容量壓縮 (Used to import videos for trimming and smart bitrate compression).</string>
+	<string>Used to import videos from your photo library for range trimming and bitrate compression.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -52,7 +52,7 @@
 					<key>UISceneConfigurationName</key>
 					<string>flutter</string>
 					<key>UISceneDelegateClassName</key>
-					<string>FlutterSceneDelegate</string>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
 					<key>UISceneStoryboardFile</key>
 					<string>Main</string>
 				</dict>
@@ -70,9 +70,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

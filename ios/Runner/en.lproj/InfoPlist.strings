@@ -1,0 +1,7 @@
+"CFBundleDisplayName" = "TimeCam Pro";
+"CFBundleName" = "TimeCam Pro";
+"NSCameraUsageDescription" = "Used to capture field documentation photos and videos with live timestamp and GPS watermarks.";
+"NSLocationWhenInUseUsageDescription" = "Used to display street addresses and GPS coordinates on field watermarks during capture.";
+"NSMicrophoneUsageDescription" = "Used to record ambient audio during field documentation video capture.";
+"NSPhotoLibraryAddUsageDescription" = "Used to save watermarked photos and compressed videos to your photo library.";
+"NSPhotoLibraryUsageDescription" = "Used to import videos from your photo library for range trimming and bitrate compression.";

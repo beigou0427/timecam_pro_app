@@ -44,3 +44,14 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 *.p8
+**/AuthKey_*.p8
+fastlane/api_key.json
+*api_key*.json
+*.p12
+HANDOFF_PROMPT.md
+.env*
+*.pem
+*.key
+*.mobileprovision
+ss/
+fastlane/

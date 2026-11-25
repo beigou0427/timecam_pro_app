@@ -1,26 +1,26 @@
 import 'package:flutter/foundation.dart';
 
 enum UserPersonaMode {
-  trafficEvidence(
-    titleZh: '🚓 行車違規蒐證',
-    titleEn: '🚓 Traffic Evidence',
-    notePrefixZh: '違規車牌',
-    notePrefixEn: 'License Plate',
-    defaultSampleNote: 'ABC-1234 紅線違停',
-  ),
   fieldEngineering(
-    titleZh: '👷 外勤工程巡檢',
-    titleEn: '👷 Field Inspection',
+    titleZh: '工程與案場巡檢',
+    titleEn: 'Field Engineering',
     notePrefixZh: '工程案場',
     notePrefixEn: 'Project Site',
-    defaultSampleNote: '台南七股太陽能案場 #A08 巡檢合格',
+    defaultSampleNote: 'A08 案場配管配線查驗合格',
   ),
   logisticsProof(
-    titleZh: '📦 物流配送打卡',
-    titleEn: '📦 Delivery Proof',
+    titleZh: '配送與驗車打卡',
+    titleEn: 'Delivery & Fleet Proof',
     notePrefixZh: '配送單號',
     notePrefixEn: 'Order ID',
-    defaultSampleNote: 'TW-99281 已送達管理室簽收',
+    defaultSampleNote: 'TW-99281 已送達指定窗口簽收',
+  ),
+  trafficEvidence(
+    titleZh: '行車與路口蒐證',
+    titleEn: 'Traffic & Incident Log',
+    notePrefixZh: '車牌 / 備註',
+    notePrefixEn: 'Plate / Note',
+    defaultSampleNote: 'ABC-1234 路口影像存證',
   );
 
   const UserPersonaMode({
@@ -45,14 +45,15 @@ class PersonaPositioningEngine {
   static String buildWatermarkHeader(
     UserPersonaMode mode, {
     required bool isZh,
+    String tzLabel = 'UTC+8',
   }) {
     switch (mode) {
-      case UserPersonaMode.trafficEvidence:
-        return isZh ? 'UTC+8 交通蒐證' : 'UTC+8 TRAFFIC';
       case UserPersonaMode.fieldEngineering:
-        return isZh ? 'UTC+8 工程巡檢' : 'UTC+8 INSPECTION';
+        return isZh ? '$tzLabel 工程巡檢' : '$tzLabel INSPECTION';
       case UserPersonaMode.logisticsProof:
-        return isZh ? 'UTC+8 物流簽收' : 'UTC+8 LOGISTICS';
+        return isZh ? '$tzLabel 配送存證' : '$tzLabel LOGISTICS';
+      case UserPersonaMode.trafficEvidence:
+        return isZh ? '$tzLabel 行車存證' : '$tzLabel INCIDENT LOG';
     }
   }
 
@@ -61,18 +62,18 @@ class PersonaPositioningEngine {
     required bool isZh,
   }) {
     switch (mode) {
-      case UserPersonaMode.trafficEvidence:
-        return isZh
-            ? '輸入違規車牌與態樣 (例: ABC-1234 紅線違停)'
-            : 'Enter plate & violation (e.g. ABC-1234)';
       case UserPersonaMode.fieldEngineering:
         return isZh
-            ? '輸入太陽能/工地案場與項目 (例: 案場#A08 巡檢合格)'
+            ? '輸入案場編號與查驗項目 (例: 案場#A08 合格)'
             : 'Enter site & inspection note (e.g. Site #A08 OK)';
       case UserPersonaMode.logisticsProof:
         return isZh
-            ? '輸入配送單號與簽收狀態 (例: TW-99281 已送達)'
-            : 'Enter order ID & proof (e.g. TW-99281 Delivered)';
+            ? '輸入配送單號與簽收狀態 (例: TW-99281 已簽收)'
+            : 'Enter order ID & handoff note (e.g. TW-99281 Delivered)';
+      case UserPersonaMode.trafficEvidence:
+        return isZh
+            ? '輸入車牌號碼或現場備註 (例: ABC-1234)'
+            : 'Enter plate number or note (e.g. ABC-1234)';
     }
   }
 
@@ -81,18 +82,18 @@ class PersonaPositioningEngine {
     required bool isZh,
   }) {
     switch (mode) {
-      case UserPersonaMode.trafficEvidence:
-        return isZh
-            ? r'🚓 升級 Pro (NT$590 買斷)：永久解鎖 20MB 檢舉影片壓縮與全台道交法條模板！'
-            : r'🚓 Pro Lifetime ($119.99): Unlimited 20MB video compression & traffic templates!';
       case UserPersonaMode.fieldEngineering:
         return isZh
-            ? r'👷 升級 Pro (NT$590 買斷)：移除右下角品牌標章、啟用完整 12 碼防偽指紋與案場抬頭！'
-            : r'👷 Pro Lifetime ($119.99): Remove brand badge & unlock full 12-char integrity seal!';
+            ? '升級 Pro 專業版：啟用專屬公司抬頭浮水印、批次多筆 A4 驗收 PDF 報告與無限影片壓縮。'
+            : 'Upgrade to Pro for custom company header watermarks, batch A4 PDF dossiers, and unlimited exports.';
       case UserPersonaMode.logisticsProof:
         return isZh
-            ? r'📦 升級 Pro (NT$590 買斷)：無限匯出高壓縮比配送存證影片與防竄改時間水印！'
-            : r'📦 Pro Lifetime ($119.99): Unlimited delivery proof video compression & UTC+8 seal!';
+            ? '升級 Pro 專業版：無限匯出配送存證影片、自訂公司名稱抬頭與多筆 A4 簽收總表 PDF。'
+            : 'Upgrade to Pro for unlimited delivery video exports, custom headers, and batch A4 PDF logs.';
+      case UserPersonaMode.trafficEvidence:
+        return isZh
+            ? '升級 Pro 專業版：無限次 20MB / 10MB 影片壓縮匯出與完整 A4 PDF 紀錄彙整。'
+            : 'Upgrade to Pro for unlimited 20MB / 10MB video exports and complete A4 PDF logs.';
     }
   }
 }

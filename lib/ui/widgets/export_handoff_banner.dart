@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/persona_positioning_engine.dart';
 import '../../core/taiwan_report_repository.dart';
 
-/// PM #4 Julie Zhuo 改進：跨分頁轉碼完成接力上下文模型
+/// 轉碼完成接力上下文模型
 @immutable
 class ExportHandoffContext {
   const ExportHandoffContext({
@@ -16,10 +17,9 @@ class ExportHandoffContext {
   final String plateNumber;
   final String address;
   final double outputSizeMB;
-  final CityReportPortal matchedPortal;
+  final CityReportPortal? matchedPortal;
   final String clipboardSummary;
 
-  /// 安全格式化壓縮後檔案大小 (防 NaN 裝甲)
   String get formattedSizeMB {
     if (!outputSizeMB.isFinite || outputSizeMB <= 0.0) {
       return '18.6 MB';
@@ -28,7 +28,7 @@ class ExportHandoffContext {
   }
 }
 
-/// PM #4 Julie Zhuo 改進：轉碼完成後自動匹配轄區警局之「零斷層一鍵送件接力卡」
+/// 轉碼完成接力卡（嚴格隔離模式與真實地區，並支援一鍵 PDF 與系統評分）
 class ExportHandoffBanner extends StatelessWidget {
   const ExportHandoffBanner({
     super.key,
@@ -37,6 +37,9 @@ class ExportHandoffBanner extends StatelessWidget {
     required this.onOpenTrafficPortal,
     required this.onOpenEpaPortal,
     required this.onDismiss,
+    this.activePersona = UserPersonaMode.fieldEngineering,
+    this.onExportPdf,
+    this.onRequestReview,
   });
 
   final bool isZh;
@@ -44,11 +47,16 @@ class ExportHandoffBanner extends StatelessWidget {
   final ValueChanged<CityReportPortal> onOpenTrafficPortal;
   final ValueChanged<CityReportPortal> onOpenEpaPortal;
   final VoidCallback onDismiss;
+  final UserPersonaMode activePersona;
+  final VoidCallback? onExportPdf;
+  final VoidCallback? onRequestReview;
 
-  /// 根據影片拍攝地址自動匹配轄區警察局與環保局檢舉入口 (支援臺/台正規化與國道優先判定)
-  static CityReportPortal resolvePortalByAddress(String rawAddress) {
+  /// 根據實際地址精準匹配對應台灣縣市或國道公開入口；若非台灣地址回傳 null（絕不誤導向台北）
+  static CityReportPortal? resolvePortalByAddress(String rawAddress) {
     final String normalized =
         rawAddress.trim().replaceAll('臺', '台').toLowerCase();
+    if (normalized.isEmpty) return null;
+
     const List<CityReportPortal> portals =
         TaiwanReportRepository.allCityPortals;
 
@@ -56,30 +64,59 @@ class ExportHandoffBanner extends StatelessWidget {
       r'(國道|高速公路|快速道路|快速公路|台6[12468]|台7[2468]|台8[2468]|highway|freeway|expressway)',
     );
     if (highwayRegex.hasMatch(normalized)) {
-      return portals.last;
+      return portals.firstWhere(
+        (CityReportPortal p) => p.id == 'highway_police',
+        orElse: () => portals.first,
+      );
     }
 
+    // Pass 1: exact full city/county name match (disambiguates 新竹縣 vs 新竹市, 嘉義縣 vs 嘉義市, 新北市 vs 台北市, New Taipei vs Taipei City, 連江/馬祖)
     for (final CityReportPortal portal in portals) {
-      final String zhKey =
-          portal.cityNameZh.replaceAll('臺', '台').substring(0, 2);
-      final String enKey =
-          portal.cityNameEn.split(' ').first.toLowerCase();
-      if (normalized.contains(zhKey) || normalized.contains(enKey)) {
+      if (portal.region == PortalRegion.national) continue;
+      if (portal.id == 'taipei_city' &&
+          (normalized.contains('新北') || normalized.contains('new taipei'))) {
+        continue;
+      }
+      final String fullZh = portal.cityNameZh
+          .replaceAll('臺', '台')
+          .replaceAll(' (馬祖)', '')
+          .toLowerCase();
+      final String fullEn = portal.cityNameEn.toLowerCase();
+      if (normalized.contains(fullZh) ||
+          (portal.id == 'lienchiang' && normalized.contains('馬祖')) ||
+          normalized.contains(fullEn)) {
         return portal;
       }
     }
-    return portals.first;
+
+    // Pass 2: short 2-char zh fallback only for unambiguous divisions
+    for (final CityReportPortal portal in portals) {
+      if (portal.region == PortalRegion.national) continue;
+      final String fullZh =
+          portal.cityNameZh.replaceAll('臺', '台').replaceAll(' (馬祖)', '');
+      final String shortZh = fullZh.length >= 2 ? fullZh.substring(0, 2) : fullZh;
+      if (shortZh == '新竹' || shortZh == '嘉義') continue;
+      if (shortZh == '台北' && normalized.contains('新北')) continue;
+      final String enFirst = portal.cityNameEn.split(' ').first.toLowerCase();
+      if (normalized.contains(shortZh.toLowerCase()) ||
+          (portal.id != 'taipei_city' &&
+              enFirst.length >= 4 &&
+              normalized.contains(enFirst))) {
+        return portal;
+      }
+    }
+    return null;
   }
 
-  /// 建立轉碼完成後之跨頁接力上下文
   static ExportHandoffContext createContext({
     required String plateNumber,
     required String address,
     required double outputSizeMB,
     required String clipboardSummary,
   }) {
+    final String cleanNote = plateNumber.trim();
     return ExportHandoffContext(
-      plateNumber: plateNumber.trim().isEmpty ? 'ABC-8899' : plateNumber.trim(),
+      plateNumber: cleanNote,
       address: address.trim(),
       outputSizeMB: outputSizeMB,
       matchedPortal: resolvePortalByAddress(address),
@@ -87,89 +124,22 @@ class ExportHandoffBanner extends StatelessWidget {
     );
   }
 
-  Widget _buildClipboardReadyRow(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: const BorderRadius.all(Radius.circular(8)),
-        border: Border.all(color: const Color(0xFF334155)),
-      ),
-      child: Row(
-        children: <Widget>[
-          const Icon(
-            Icons.assignment_turned_in_rounded,
-            color: Color(0xFF34D399),
-            size: 16,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isZh
-                  ? '已自動複製時間地點摘要：${handoff.plateNumber} (${handoff.address})'
-                  : 'Copied summary: ${handoff.plateNumber} (${handoff.address})',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFFCBD5E1),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          InkWell(
-            key: const Key('handoff_recopy_summary_btn'),
-            onTap: () async {
-              HapticFeedback.lightImpact();
-              final ScaffoldMessengerState messenger =
-                  ScaffoldMessenger.of(context);
-              await Clipboard.setData(
-                ClipboardData(text: handoff.clipboardSummary),
-              );
-              messenger.showSnackBar(
-                SnackBar(
-                  backgroundColor: const Color(0xFF10B981),
-                  content: Text(
-                    isZh
-                        ? '📋 已再次複製違規時間地點與車牌摘要！'
-                        : '📋 Summary re-copied to clipboard!',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              );
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              child: Text(
-                isZh ? '重製' : 'Copy',
-                style: const TextStyle(
-                  color: Color(0xFFF59E0B),
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final String cityName =
-        handoff.matchedPortal.localizedCityName(isZh: isZh);
+    final CityReportPortal? portal = handoff.matchedPortal;
+    final bool showTaiwanTrafficPortals = isZh &&
+        activePersona == UserPersonaMode.trafficEvidence &&
+        portal != null;
+    final String? cityName = portal?.localizedCityName(isZh: isZh);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF064E3B).withValues(alpha: 0.35),
-        borderRadius: const BorderRadius.all(Radius.circular(18)),
+        color: const Color(0xFF161618),
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
         border: Border.all(
-          color: const Color(0xFF10B981),
-          width: 1.8,
+          color: const Color(0xFF34C759).withValues(alpha: 0.45),
         ),
       ),
       child: Column(
@@ -177,110 +147,216 @@ class ExportHandoffBanner extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF10B981),
-                  borderRadius: BorderRadius.all(Radius.circular(6)),
-                ),
-                child: Text(
-                  isZh ? '🚀 轉碼完成・智慧接力' : '🚀 READY TO SUBMIT',
-                  style: const TextStyle(
-                    color: Color(0xFF121212),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF34C759),
+                size: 16,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 7),
               Expanded(
                 child: Text(
-                  isZh
-                      ? '已自動鎖定【$cityName】(${handoff.formattedSizeMB})'
-                      : 'Matched [$cityName] (${handoff.formattedSizeMB})',
+                  showTaiwanTrafficPortals && cityName != null
+                      ? '已匯出 ${handoff.formattedSizeMB}・對應 $cityName'
+                      : (isZh
+                          ? '已儲存至相簿 (${handoff.formattedSizeMB})'
+                          : 'Saved to Photos (${handoff.formattedSizeMB})'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              IconButton(
+              GestureDetector(
                 key: const Key('handoff_dismiss_btn'),
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: onDismiss,
-                icon: const Icon(
+                onTap: onDismiss,
+                child: const Icon(
                   Icons.close_rounded,
-                  color: Color(0xFF94A3B8),
+                  color: Color(0xFF8E8E93),
                   size: 18,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          _buildClipboardReadyRow(context),
-          const SizedBox(height: 10),
           Row(
             children: <Widget>[
               Expanded(
-                child: ElevatedButton.icon(
-                  key: const Key('handoff_open_traffic_btn'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: const Color(0xFF121212),
-                    visualDensity: VisualDensity.compact,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(10)),
-                    ),
-                  ),
-                  onPressed: () => onOpenTrafficPortal(handoff.matchedPortal),
-                  icon: const Icon(Icons.send_rounded, size: 15),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      isZh
-                          ? '開啟 $cityName 交通檢舉網貼上'
-                          : 'Open $cityName Traffic Web',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                child: Text(
+                  handoff.plateNumber.isEmpty
+                      ? (isZh ? '已準備本機影像摘要' : 'Timestamp summary ready')
+                      : (isZh
+                          ? '已複製摘要：${handoff.plateNumber}'
+                          : 'Copied: ${handoff.plateNumber}'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF8E8E93),
+                    fontSize: 12,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  key: const Key('handoff_open_epa_btn'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF34D399),
-                    visualDensity: VisualDensity.compact,
-                    side: const BorderSide(color: Color(0xFF10B981)),
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(10)),
-                    ),
-                  ),
-                  onPressed: () => onOpenEpaPortal(handoff.matchedPortal),
-                  icon: const Icon(Icons.eco_rounded, size: 15),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      isZh ? '$cityName 環保獎金網' : '$cityName EPA Web',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
+              GestureDetector(
+                key: const Key('handoff_recopy_summary_btn'),
+                onTap: () async {
+                  HapticFeedback.lightImpact();
+                  final ScaffoldMessengerState messenger =
+                      ScaffoldMessenger.of(context);
+                  await Clipboard.setData(
+                    ClipboardData(text: handoff.clipboardSummary),
+                  );
+                  messenger.showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: const Color(0xFF1F1F23),
+                      content: Text(
+                        isZh ? '已複製影像摘要' : 'Summary copied',
+                        style: const TextStyle(
+                          color: Color(0xFF34C759),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
+                  );
+                },
+                child: Text(
+                  isZh ? '重新複製' : 'Copy',
+                  style: const TextStyle(
+                    color: Color(0xFFF5B73B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          if (showTaiwanTrafficPortals)
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: SizedBox(
+                    height: 38,
+                    child: ElevatedButton(
+                      key: const Key('handoff_open_traffic_btn'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF34C759),
+                        foregroundColor: const Color(0xFF09090B),
+                        elevation: 0,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
+                        ),
+                      ),
+                      onPressed: () => onOpenTrafficPortal(portal),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '開啟 ${cityName!} 交通官網',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 38,
+                    child: ElevatedButton(
+                      key: const Key('handoff_open_epa_btn'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF232326),
+                        foregroundColor: const Color(0xFFE4E4E7),
+                        elevation: 0,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
+                        ),
+                      ),
+                      onPressed: () => onOpenEpaPortal(portal),
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '環保通報官網',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: <Widget>[
+                if (onExportPdf != null)
+                  Expanded(
+                    child: SizedBox(
+                      height: 38,
+                      child: ElevatedButton(
+                        key: const Key('handoff_export_pdf_btn'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF5B73B),
+                          foregroundColor: const Color(0xFF09090B),
+                          elevation: 0,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(10)),
+                          ),
+                        ),
+                        onPressed: onExportPdf,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            isZh ? '匯出 A4 PDF 報告' : 'Export A4 PDF',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (onExportPdf != null && onRequestReview != null)
+                  const SizedBox(width: 8),
+                if (onRequestReview != null)
+                  Expanded(
+                    child: SizedBox(
+                      height: 38,
+                      child: OutlinedButton(
+                        key: const Key('handoff_rate_app_btn'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFE4E4E7),
+                          side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.16),
+                          ),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(10)),
+                          ),
+                        ),
+                        onPressed: onRequestReview,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            isZh ? '覺得好用・評分鼓勵' : 'Rate TimeCam Pro',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
     );

@@ -1,53 +1,52 @@
-import '../../core/native_hardware_bridge.dart';
-import '../../core/storekit_iap_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/ariely_decoy_pricing_engine.dart';
-import '../../core/epa_reward_calculator_engine.dart';
-import '../../core/hormozi_grand_slam_offer_engine.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+import '../../core/native_hardware_bridge.dart';
+import '../../core/storekit_iap_service.dart';
 
 enum ProPlanTier {
-  b2bCrew(
-    productId: 'com.beigou.timecampro.crew1990',
-    titleZh: '工程班組 5 機包 (支援公司報帳)',
-    titleEn: '5-Device Engineering Crew Pack',
-    priceTextZh: r'NT$1,990',
-    priceTextEn: r'$519.99',
-    subNoteZh: r'平均每台僅 NT$398・自訂公司抬頭與 A4 驗收書',
-    subNoteEn: r'Just $12/device • Custom company headers & PDF',
-    badgeZh: '👷 B2B 工程團隊首選',
-    badgeEn: '👷 B2B TEAM PACK',
+  annual(
+    productId: 'com.beigou.timecampro.annual550',
+    titleZh: '年訂閱',
+    titleEn: 'Annual Pro',
+    priceTextZh: r'NT$550 / 年',
+    priceTextEn: r'$18.99 / yr',
+    subNoteZh: '年付最超值・可隨時於系統設定取消',
+    subNoteEn: 'Best value • Cancel anytime in Settings',
+    badgeZh: '最受歡迎 · 超值推薦',
+    badgeEn: 'MOST POPULAR',
   ),
   lifetime(
     productId: 'com.beigou.timecampro.lifetime590',
-    titleZh: '旗艦終身買斷版 (全套解鎖)',
-    titleEn: 'Flagship Lifetime (All Unlocked)',
-    priceTextZh: r'NT$590',
-    priceTextEn: r'$119.99',
-    subNoteZh: r'只比年費多 NT$40 ➔ 永久終身＋法條＋12碼防偽',
-    subNoteEn: r'Just $1 more than 1-Yr ➔ Own forever!',
-    badgeZh: '🔥 68% 用戶首選・最划算',
-    badgeEn: '🔥 BEST VALUE',
+    titleZh: '終身買斷版',
+    titleEn: 'Lifetime Pro',
+    priceTextZh: r'NT$1,290',
+    priceTextEn: r'$39.99',
+    subNoteZh: '一次付費，單一 Apple ID 永久解鎖',
+    subNoteEn: 'One-time purchase, yours forever',
+    badgeZh: '永久買斷',
+    badgeEn: 'ONE-TIME',
   ),
-  annual(
-    productId: 'com.beigou.timecampro.annual550',
-    titleZh: '純年費基本授權 (1年期)',
-    titleEn: 'Basic Annual License (1 Year)',
-    priceTextZh: r'NT$550 / 年',
-    priceTextEn: r'$18.99 / yr',
-    subNoteZh: r'平均每日 NT$1.5・不含完整法條與12碼防偽章',
-    subNoteEn: r'$18.99/yr • Renews annually',
-    badgeZh: '1年期基礎版',
-    badgeEn: '1-YEAR BASIC',
+  // 僅保留供 StoreKit 既有舊購買者還原辨識，UI 不再販售空殼團隊多機授權
+  b2bCrew(
+    productId: 'com.beigou.timecampro.crew1990',
+    titleZh: '商用買斷版',
+    titleEn: 'Commercial Lifetime',
+    priceTextZh: r'NT$1,990',
+    priceTextEn: r'$59.99',
+    subNoteZh: '單一帳號進階永久授權',
+    subNoteEn: 'Commercial lifetime entitlement',
+    badgeZh: '',
+    badgeEn: '',
   ),
   monthly(
     productId: 'com.beigou.timecampro.monthly150',
-    titleZh: '單月輕量體驗版',
-    titleEn: 'Monthly Starter Plan',
+    titleZh: '月訂閱',
+    titleEn: 'Monthly Pro',
     priceTextZh: r'NT$150 / 月',
     priceTextEn: r'$4.99 / mo',
-    subNoteZh: '適合短期單次案件壓縮',
-    subNoteEn: 'Flexible monthly access',
+    subNoteZh: '彈性月付，可隨時於系統設定取消',
+    subNoteEn: 'Flexible monthly • Cancel anytime',
     badgeZh: '',
     badgeEn: '',
   );
@@ -74,104 +73,21 @@ enum ProPlanTier {
   final String badgeZh;
   final String badgeEn;
 
+  bool get isSubscription =>
+      this == ProPlanTier.annual || this == ProPlanTier.monthly;
+
   String localizedTitle({required bool isZh}) => isZh ? titleZh : titleEn;
-  String localizedPrice({required bool isZh}) => isZh ? priceTextZh : priceTextEn;
-  String localizedSubNote({required bool isZh}) => isZh ? subNoteZh : subNoteEn;
+  String localizedPrice({required bool isZh}) =>
+      isZh ? priceTextZh : priceTextEn;
+  String localizedSubNote({required bool isZh}) =>
+      isZh ? subNoteZh : subNoteEn;
   String localizedBadge({required bool isZh}) => isZh ? badgeZh : badgeEn;
-}
 
-class PulsingCtaButton extends StatefulWidget {
-  const PulsingCtaButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.isLoading = false,
-  });
-  final String label;
-  final VoidCallback onPressed;
-  final bool isLoading;
-
-  @override
-  State<PulsingCtaButton> createState() => _PulsingCtaButtonState();
-}
-
-class _PulsingCtaButtonState extends State<PulsingCtaButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1250),
-    )..repeat(reverse: true);
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.035).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFF59E0B),
-            foregroundColor: const Color(0xFF121212),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            elevation: 6,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(14)),
-            ),
-          ),
-          onPressed: widget.isLoading
-              ? null
-              : () {
-                  HapticFeedback.mediumImpact();
-                  widget.onPressed();
-                },
-          child: widget.isLoading
-              ? const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Color(0xFF121212),
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    const Icon(Icons.bolt_rounded, size: 22),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          widget.label,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-        ),
-      ),
-    );
+  static ProPlanTier fromProductId(String productId) {
+    for (final ProPlanTier tier in ProPlanTier.values) {
+      if (tier.productId == productId) return tier;
+    }
+    return ProPlanTier.lifetime;
   }
 }
 
@@ -183,6 +99,7 @@ class PaywallSheet extends StatefulWidget {
     required this.triggerReasonEn,
     required this.onUnlockSuccess,
   });
+
   final bool isZh;
   final String triggerReasonZh;
   final String triggerReasonEn;
@@ -193,231 +110,237 @@ class PaywallSheet extends StatefulWidget {
 }
 
 class _PaywallSheetState extends State<PaywallSheet> {
-  ProPlanTier _selectedTier = ProPlanTier.lifetime;
+  ProPlanTier _selectedTier = ProPlanTier.annual;
+  bool _showMonthlyPlan = false;
   bool _isProcessing = false;
+  Map<String, ProductDetails> _storeProducts = <String, ProductDetails>{};
 
-  Widget _buildLossAversionHeader() {
-    final String reason =
-        widget.isZh ? widget.triggerReasonZh : widget.triggerReasonEn;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
-        border: Border.all(
-          color: const Color(0xFFF59E0B).withValues(alpha: 0.6),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: Color(0xFFF59E0B),
-            size: 22,
+  static const String _eulaUrl =
+      'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+  static const String _privacyUrl =
+      'https://beigou0427.github.io/timecam_pro_app/privacy.html';
+  static const String _manageSubsUrl =
+      'https://apps.apple.com/account/subscriptions';
+
+  static const List<ProPlanTier> _sellableTiers = <ProPlanTier>[
+    ProPlanTier.annual,
+    ProPlanTier.lifetime,
+    ProPlanTier.monthly,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _storeProducts = StorekitIapService.cachedProducts;
+    _loadStorePrices();
+    StorekitIapService.setUiCallbacks(
+      onError: (String message) {
+        if (!mounted) return;
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFFFF453A),
+            content: Text(message),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              reason,
-              style: const TextStyle(
-                color: Color(0xFFFDE68A),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                height: 1.35,
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
+      onCanceled: () {
+        if (!mounted) return;
+        setState(() => _isProcessing = false);
+      },
     );
   }
 
-  Widget _buildAdvisoryStackCard() {
-    final String hormoziText = HormoziGrandSlamOfferEngine.buildValueStackHeadline(
-      offerPriceNtd: 590,
-      isZh: widget.isZh,
-    );
-    final EpaRewardEstimate roiEst = EpaRewardCalculatorEngine.calculateReward(
-      cityId: 'taipei_city',
-      item: EpaViolationItem.cigaretteButt,
-    );
-    final String roiText = EpaRewardCalculatorEngine.buildRoiPitchText(
-      roiEst,
-      isZh: widget.isZh,
-    );
-    final String arielyText = ArielyDecoyPricingEngine.buildDecoyComparisonPitch(
-      isZh: widget.isZh,
-    );
+  @override
+  void dispose() {
+    StorekitIapService.setUiCallbacks(onError: null, onCanceled: null);
+    super.dispose();
+  }
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: const BorderRadius.all(Radius.circular(14)),
-        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.65)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
+  Future<void> _loadStorePrices() async {
+    final Set<String> ids =
+        _sellableTiers.map((ProPlanTier t) => t.productId).toSet();
+    final Map<String, ProductDetails> loaded =
+        await StorekitIapService.fetchProducts(ids);
+    if (!mounted || loaded.isEmpty) return;
+    setState(() {
+      _storeProducts = loaded;
+    });
+  }
+
+  String _displayPrice(ProPlanTier tier) {
+    final ProductDetails? live = _storeProducts[tier.productId];
+    if (live != null && live.price.isNotEmpty) {
+      if (tier == ProPlanTier.annual) {
+        return widget.isZh ? '${live.price} / 年' : '${live.price} / yr';
+      }
+      if (tier == ProPlanTier.monthly) {
+        return widget.isZh ? '${live.price} / 月' : '${live.price} / mo';
+      }
+      return live.price;
+    }
+    return tier.localizedPrice(isZh: widget.isZh);
+  }
+
+  String _dynamicSubNote(ProPlanTier tier) {
+    if (tier == ProPlanTier.annual) {
+      final ProductDetails? live = _storeProducts[tier.productId];
+      if (live != null && live.rawPrice > 0) {
+        final double daily = live.rawPrice / 365.0;
+        final String sym = live.currencySymbol.isNotEmpty
+            ? live.currencySymbol
+            : live.currencyCode;
+        return widget.isZh
+            ? '平均約 $sym${daily.toStringAsFixed(1)} / 日・隨時可取消'
+            : 'Approx. $sym${daily.toStringAsFixed(2)} / day • Cancel anytime';
+      }
+    }
+    return tier.localizedSubNote(isZh: widget.isZh);
+  }
+
+  Widget _buildBenefitsList() {
+    final List<String> features = <String>[
+      widget.isZh
+          ? '完整多筆匯出 A4 驗收報告 PDF（含縮圖直傳 LINE / Email）'
+          : 'Full batch A4 inspection PDF reports with photos',
+      widget.isZh
+          ? '自訂專屬公司抬頭・可隱藏預設品牌角標'
+          : 'Custom company header & hide default brand mark',
+      widget.isZh
+          ? '無限次 20MB / 10MB 4K 影片位元率壓縮匯出'
+          : 'Unlimited 20MB & 10MB hardware video exports',
+      widget.isZh
+          ? '完整 SHA-256 檔案校驗碼與本機完整紀錄備份'
+          : 'Full SHA-256 integrity hash & local JSON record backup',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: features.map((String line) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 7),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Expanded(
-                child: Text(
-                  hormoziText,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w900,
-                  ),
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.check_rounded,
+                  size: 16,
+                  color: Color(0xFFF5B73B),
                 ),
               ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF10B981),
-                  borderRadius: BorderRadius.all(Radius.circular(6)),
-                ),
+              const SizedBox(width: 9),
+              Expanded(
                 child: Text(
-                  widget.isZh ? '官方授權' : 'PRO',
+                  line,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
+                    color: Color(0xFFE4E4E7),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            roiText,
-            style: const TextStyle(
-              color: Color(0xFF34D399),
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            arielyText,
-            style: const TextStyle(
-              color: Color(0xFF38BDF8),
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
-            ),
-          ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildPlanCard(ProPlanTier tier) {
+  Widget _buildPlanRow(ProPlanTier tier) {
     final bool isSelected = _selectedTier == tier;
     final String badge = tier.localizedBadge(isZh: widget.isZh);
+    final String priceLabel = _displayPrice(tier);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        borderRadius: const BorderRadius.all(Radius.circular(14)),
+      child: GestureDetector(
         onTap: _isProcessing
             ? null
             : () {
                 HapticFeedback.selectionClick();
-                setState(() {
-                  _selectedTier = tier;
-                });
+                setState(() => _selectedTier = tier);
               },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected
-                ? const Color(0xFF1E293B)
-                : const Color(0xFF0F172A),
+            color:
+                isSelected ? const Color(0xFF232326) : const Color(0xFF161618),
             borderRadius: const BorderRadius.all(Radius.circular(14)),
             border: Border.all(
               color: isSelected
-                  ? const Color(0xFFF59E0B)
-                  : const Color(0xFF334155),
-              width: isSelected ? 2.2 : 1.0,
+                  ? const Color(0xFFF5B73B)
+                  : Colors.transparent,
+              width: 1.5,
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: <Widget>[
-              if (badge.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 5),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF59E0B),
-                    borderRadius: BorderRadius.all(Radius.circular(6)),
-                  ),
-                  child: Text(
-                    badge,
-                    style: const TextStyle(
-                      color: Color(0xFF121212),
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              Row(
-                children: <Widget>[
-                  Icon(
-                    isSelected
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_off_rounded,
-                    color: isSelected
-                        ? const Color(0xFFF59E0B)
-                        : const Color(0xFF64748B),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
                       children: <Widget>[
                         Text(
                           tier.localizedTitle(isZh: widget.isZh),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14.5,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          tier.localizedSubNote(isZh: widget.isZh),
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 11.5,
+                        if (badge.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5B73B)
+                                  .withValues(alpha: 0.18),
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(5)),
+                            ),
+                            child: Text(
+                              badge,
+                              style: const TextStyle(
+                                color: Color(0xFFF5B73B),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      tier.localizedPrice(isZh: widget.isZh),
-                      style: TextStyle(
-                        color: isSelected
-                            ? const Color(0xFFF59E0B)
-                            : Colors.white,
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w900,
+                    const SizedBox(height: 3),
+                    Text(
+                      _dynamicSubNote(tier),
+                      style: const TextStyle(
+                        color: Color(0xFFA1A1AA),
+                        fontSize: 11.5,
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                priceLabel,
+                style: TextStyle(
+                  color: isSelected ? const Color(0xFFF5B73B) : Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const <FontFeature>[
+                    FontFeature.tabularFigures(),
+                  ],
+                ),
               ),
             ],
           ),
@@ -427,130 +350,339 @@ class _PaywallSheetState extends State<PaywallSheet> {
   }
 
   String _ctaLabel() {
+    final String price = _displayPrice(_selectedTier);
     switch (_selectedTier) {
-      case ProPlanTier.b2bCrew:
-        return widget.isZh
-            ? r'解鎖 5 人工程班組包 (NT$1,990 可報帳)'
-            : r'Unlock 5-Device Crew Pack ($519.99)';
       case ProPlanTier.lifetime:
-        return widget.isZh
-            ? r'立即以 NT$590 永久解鎖旗艦終身版'
-            : r'Unlock Flagship Lifetime for $119.99';
+      case ProPlanTier.b2bCrew:
+        return widget.isZh ? '解鎖終身版 · $price' : 'Unlock Lifetime · $price';
       case ProPlanTier.annual:
-        return widget.isZh
-            ? r'訂閱 1 年期基本授權 (NT$550/年)'
-            : r'Subscribe 1-Year Basic ($18.99/yr)';
+        return widget.isZh ? '開始年訂閱 · $price' : 'Subscribe Yearly · $price';
       case ProPlanTier.monthly:
-        return widget.isZh
-            ? r'訂閱單月輕量體驗版 (NT$150/月)'
-            : r'Subscribe Monthly ($4.99/mo)';
+        return widget.isZh ? '開始月訂閱 · $price' : 'Subscribe Monthly · $price';
     }
   }
 
-  Future<void> _iap(
-    bool r) async { if (_isProcessing) return;
-  final sm = ScaffoldMessenger.of(context);
-  setState(() => _isProcessing = true);
-  final t2 = r ? ProPlanTier.lifetime
-    : _selectedTier; StorekitIapService.bind(() {
-    if (mounted) widget.onUnlockSuccess(t2);});
-  final e = await StorekitIapService.go(
-    r, t2.productId);
-  if (mounted == false) return;
-  setState(() => _isProcessing = false);
-  if (e is String) {
-    sm.showSnackBar(SnackBar(content:Text(e)));
-  } else if (StorekitIapService.isTest) {
-    widget.onUnlockSuccess(t2);}}
-  void _handlePurchase() => _iap(false);
-  void _handleRestore() => _iap(true);
+  Future<void> _executeBuy() async {
+    if (_isProcessing) return;
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    setState(() => _isProcessing = true);
+
+    final String? err =
+        await StorekitIapService.buy(_selectedTier.productId);
+    if (!mounted) return;
+
+    if (err != null) {
+      setState(() => _isProcessing = false);
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFFFF453A),
+          content: Text(err),
+        ),
+      );
+      return;
+    }
+
+    if (StorekitIapService.isTest) {
+      setState(() => _isProcessing = false);
+      widget.onUnlockSuccess(_selectedTier);
+      return;
+    }
+
+    Future<void>.delayed(const Duration(seconds: 15), () {
+      if (!mounted || !_isProcessing) return;
+      setState(() => _isProcessing = false);
+    });
+  }
+
+  Future<void> _executeRestore() async {
+    if (_isProcessing) return;
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    setState(() => _isProcessing = true);
+
+    if (StorekitIapService.isTest) {
+      setState(() => _isProcessing = false);
+      messenger.showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF1F1F23),
+          content: Text(
+            widget.isZh
+                ? '目前此 Apple ID 查無有效購買紀錄'
+                : 'No active purchases found for this Apple ID.',
+            style: const TextStyle(color: Color(0xFFE4E4E7)),
+          ),
+        ),
+      );
+      return;
+    }
+
+    final List<String>? activeIds =
+        await NativeHardwareBridge.syncStoreKitRestore();
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    final Set<String> knownIds =
+        ProPlanTier.values.map((ProPlanTier t) => t.productId).toSet();
+    final String? matchedId = activeIds?.cast<String?>().firstWhere(
+          (String? id) => id != null && knownIds.contains(id),
+          orElse: () => null,
+        );
+
+    if (matchedId != null) {
+      widget.onUnlockSuccess(ProPlanTier.fromProductId(matchedId));
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF1F1F23),
+        content: Text(
+          widget.isZh
+              ? '查無可恢復的有效訂閱或買斷紀錄'
+              : 'No active Pro purchase or subscription found.',
+          style: const TextStyle(
+            color: Color(0xFFE4E4E7),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F172A),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.verified_rounded,
-                    color: Color(0xFFF59E0B),
-                    size: 26,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.isZh
-                          ? '升級 時間相機 Pro 專業版'
-                          : 'Upgrade to TimeCam Pro',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w900,
-                      ),
+    final double maxH = MediaQuery.of(context).size.height * 0.9;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxH),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF0E0E10),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius:
+                          const BorderRadius.all(Radius.circular(99)),
                     ),
                   ),
-                  IconButton(
-                    key: const Key('paywall_close_btn'),
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _buildLossAversionHeader(),
-              const SizedBox(height: 10),
-              _buildAdvisoryStackCard(),
-              const SizedBox(height: 12),
-              for (final ProPlanTier tier in ProPlanTier.values)
-                _buildPlanCard(tier),
-              const SizedBox(height: 6),
-              PulsingCtaButton(
-                label: _ctaLabel(),
-                isLoading: _isProcessing,
-                onPressed: _handlePurchase,
-              ),
-              const SizedBox(height: 8),
-              Wrap(alignment:WrapAlignment.center,
-children: <Widget>[
-                  TextButton(
-                    key: const Key('paywall_restore_btn'),
-                    onPressed: _isProcessing ? null : _handleRestore,
-                    child: Text(
-                      widget.isZh ? '恢復購買 (Restore)' : 'Restore Purchases',
-                      style: const TextStyle(
-                        color: Color(0xFFCBD5E1),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                TextButton(key:const Key('eula_btn'),onPressed:()=>NativeHardwareBridge.openOfficialPortalSafari('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'),child:Text(widget.isZh?'服務條款':'EULA')),TextButton(key:const Key('privacy_btn'),onPressed:()=>NativeHardwareBridge.openOfficialPortalSafari('https://github.com/beigou0427/timecam_pro_app'),child:Text(widget.isZh?'隱私權':'Privacy')),],
-              ),
-              Text(
-                widget.isZh
-                    ? '確認購買後將由您的 Apple ID 扣款。終身與班組買斷版為一次付費永久有效；訂閱方案除非於當期結束前 24 小時於系統設定取消，否則將自動續訂。'
-                    : 'Payment will be charged to your Apple ID. Lifetime & Crew packs are one-time purchases. Subscriptions auto-renew unless canceled 24h before period end.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 10.5,
-                  height: 1.35,
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        widget.isZh ? '升級時間相機 Pro' : 'TimeCam Pro',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      key: const Key('paywall_close_btn'),
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Color(0xFF8E8E93),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Builder(
+                  builder: (BuildContext ctx) {
+                    final String reason = (widget.isZh
+                            ? widget.triggerReasonZh
+                            : widget.triggerReasonEn)
+                        .trim();
+                    if (reason.isEmpty) return const SizedBox.shrink();
+                    return Container(
+                      key: const Key('paywall_trigger_reason_box'),
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5B73B).withValues(alpha: 0.12),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(11)),
+                        border: Border.all(
+                          color: const Color(0xFFF5B73B)
+                              .withValues(alpha: 0.34),
+                        ),
+                      ),
+                      child: Text(
+                        reason,
+                        style: const TextStyle(
+                          color: Color(0xFFFDE68A),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _buildBenefitsList(),
+                const SizedBox(height: 14),
+                for (final ProPlanTier tier in _sellableTiers)
+                  if (_showMonthlyPlan ||
+                      tier == ProPlanTier.annual ||
+                      tier == ProPlanTier.lifetime ||
+                      tier == _selectedTier)
+                    _buildPlanRow(tier),
+                if (!_showMonthlyPlan)
+                  Align(
+                    alignment: Alignment.center,
+                    child: TextButton(
+                      key: const Key('paywall_more_plans_btn'),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _showMonthlyPlan = true);
+                      },
+                      child: Text(
+                        widget.isZh
+                            ? '顯示彈性月訂閱方案 ▾'
+                            : 'Show Monthly Plan ▾',
+                        style: const TextStyle(
+                          color: Color(0xFFA1A1AA),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    key: const Key('paywall_primary_cta_btn'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF5B73B),
+                      foregroundColor: const Color(0xFF09090B),
+                      elevation: 0,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                      ),
+                    ),
+                    onPressed: _isProcessing ? null : _executeBuy,
+                    child: _isProcessing
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Color(0xFF09090B),
+                            ),
+                          )
+                        : FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _ctaLabel(),
+                              style: const TextStyle(
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Center(
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    children: <Widget>[
+                      TextButton(
+                        key: const Key('paywall_restore_btn'),
+                        onPressed: _isProcessing ? null : _executeRestore,
+                        child: Text(
+                          widget.isZh ? '恢復購買' : 'Restore',
+                          style: const TextStyle(
+                            color: Color(0xFFE4E4E7),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        key: const Key('paywall_manage_subs_btn'),
+                        onPressed: () =>
+                            NativeHardwareBridge.openExternalUrl(
+                          _manageSubsUrl,
+                        ),
+                        child: Text(
+                          widget.isZh ? '管理訂閱' : 'Manage Sub',
+                          style: const TextStyle(
+                            color: Color(0xFFA1A1AA),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        key: const Key('eula_btn'),
+                        onPressed: () =>
+                            NativeHardwareBridge.openOfficialPortalSafari(
+                          _eulaUrl,
+                        ),
+                        child: Text(
+                          widget.isZh ? '條款' : 'Terms',
+                          style: const TextStyle(
+                            color: Color(0xFFA1A1AA),
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        key: const Key('privacy_btn'),
+                        onPressed: () =>
+                            NativeHardwareBridge.openOfficialPortalSafari(
+                          _privacyUrl,
+                        ),
+                        child: Text(
+                          widget.isZh ? '隱私權' : 'Privacy',
+                          style: const TextStyle(
+                            color: Color(0xFFA1A1AA),
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.isZh
+                      ? '確認購買後將向您的 Apple ID 帳號扣款。買斷版永久有效；訂閱方案於當前週期結束前 24 小時自動續訂並扣款，您可隨時前往「iPhone 設定 > Apple ID > 訂閱項目」或點上方「管理訂閱」取消。'
+                      : 'Payment is charged to your Apple ID at confirmation. Lifetime unlocks permanently. Subscriptions auto-renew unless canceled at least 24h before period end in Apple ID Subscriptions.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFA1A1AA),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

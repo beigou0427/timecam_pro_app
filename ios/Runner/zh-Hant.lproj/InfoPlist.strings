@@ -1,0 +1,7 @@
+"CFBundleDisplayName" = "時間相機 Pro";
+"CFBundleName" = "時間相機 Pro";
+"NSCameraUsageDescription" = "用於拍攝帶有即時時間、GPS 座標與街道地址浮水印的現場紀錄照片與影片。";
+"NSLocationWhenInUseUsageDescription" = "用於在拍攝畫面即時標記當前街道地址與 GPS 座標資訊。";
+"NSMicrophoneUsageDescription" = "用於錄製現場與行車紀錄影片時同步收錄環境音訊。";
+"NSPhotoLibraryAddUsageDescription" = "用於將套用浮水印後的照片與壓縮完成的紀錄影片儲存至您的相簿。";
+"NSPhotoLibraryUsageDescription" = "用於從相簿選取影片進行區間裁切與 20MB / 10MB 容量壓縮。";

@@ -1,56 +1,56 @@
 import 'package:flutter/foundation.dart';
 
-/// 110 簡訊報案與現場違規快速分類列舉
+/// 現場事件與位置摘要分類列舉（非自動撥號／非違規檢舉切結，僅作位置分享草稿）
 enum EmergencyIncidentType {
-  redLineParking(
-    code: 'RED_LINE',
-    titleZh: '紅線違停',
-    titleEn: 'Red-Zone Parking',
-    smsTemplateZh: '紅線違規停車，影響車道通行安全，請派員協助處理。',
-    smsTemplateEn: 'Illegal parking on red curb obstructing traffic flow.',
+  laneHazard(
+    code: 'LANE_HAZARD',
+    titleZh: '車道障礙 / 安全事故',
+    titleEn: 'Lane Hazard / Incident',
+    summaryTemplateZh: '現場發現車道障礙或影響通行安全狀況，提供即時位置摘要以供記錄或通報參考。',
+    summaryTemplateEn: 'Lane obstruction or traffic safety hazard observed at recorded GPS coordinates.',
   ),
   doubleParking(
-    code: 'DOUBLE_PARK',
-    titleZh: '併排停車',
-    titleEn: 'Double Parking',
-    smsTemplateZh: '車輛嚴重併排停車占用車道，造成後方車流回堵與危險，請派員取締。',
-    smsTemplateEn: 'Double parking occupying active lane and causing hazard.',
+    code: 'OBSTRUCTION',
+    titleZh: '道路占用阻塞',
+    titleEn: 'Road Obstruction',
+    summaryTemplateZh: '現場車道嚴重受阻影響通行安全，附上時間與位置資訊供協助處理參考。',
+    summaryTemplateEn: 'Active traffic lane severely obstructed; timestamped GPS summary attached.',
   ),
   sidewalkObstruction(
     code: 'SIDEWALK',
-    titleZh: '占用人行道/騎樓',
+    titleZh: '人行通道受阻',
     titleEn: 'Sidewalk Blocked',
-    smsTemplateZh: '車輛違規停放占用人行道/斑馬線，迫使行人走入車道，請派員處理。',
-    smsTemplateEn: 'Vehicle blocking pedestrian sidewalk/crosswalk.',
+    summaryTemplateZh: '人行通道或路口通行空間受阻影響行人安全，提供現場座標摘要供參考。',
+    summaryTemplateEn: 'Pedestrian walkway or crossing obstructed at recorded location.',
   ),
   trafficAccident(
     code: 'ACCIDENT',
-    titleZh: '交通事故報案',
+    titleZh: '交通事故記錄',
     titleEn: 'Traffic Collision',
-    smsTemplateZh: '現場發生道路交通事故，需請警方到場協助測繪與交通疏導。',
-    smsTemplateEn: 'Traffic collision occurred on site, police assistance requested.',
+    summaryTemplateZh: '現場發生道路交通事故，記錄時間與精準座標以利後續聯繫與協助處理。',
+    summaryTemplateEn: 'Traffic collision recorded on site with verified timestamp and GPS fix.',
   );
 
   const EmergencyIncidentType({
     required this.code,
     required this.titleZh,
     required this.titleEn,
-    required this.smsTemplateZh,
-    required this.smsTemplateEn,
+    required this.summaryTemplateZh,
+    required this.summaryTemplateEn,
   });
 
   final String code;
   final String titleZh;
   final String titleEn;
-  final String smsTemplateZh;
-  final String smsTemplateEn;
+  final String summaryTemplateZh;
+  final String summaryTemplateEn;
 
   String localizedTitle({required bool isZh}) => isZh ? titleZh : titleEn;
-  String localizedSmsBody({required bool isZh}) =>
-      isZh ? smsTemplateZh : smsTemplateEn;
+  String localizedSummaryBody({required bool isZh}) =>
+      isZh ? summaryTemplateZh : summaryTemplateEn;
 }
 
-/// 蒐證相機即時浮水印資訊快照模型
+/// 相機即時時間與定位浮水印快照模型
 @immutable
 class WatermarkSnapshot {
   const WatermarkSnapshot({
@@ -85,10 +85,10 @@ class WatermarkSnapshot {
         longitude <= 180.0;
   }
 
-  /// 格式化精準小數點後 5 位之 GPS 座標與海拔字串 (誤差 <= 1.1m)
+  /// 格式化 GPS 座標與海拔字串 (若無實機定位，誠實顯示未取得定位，絕不偽造座標)
   String formattedCoordinates({required bool isZh}) {
     if (!hasValidGps) {
-      return isZh ? 'GPS 衛星定位校準中...' : 'Calibrating GPS...';
+      return isZh ? '尚未取得 GPS 定位' : 'No GPS Fix';
     }
     final String latDir = latitude >= 0 ? 'N' : 'S';
     final String lngDir = longitude >= 0 ? 'E' : 'W';
@@ -100,7 +100,7 @@ class WatermarkSnapshot {
   }
 
   /// 完整合併地址字串
-  String get fullAddress => '$cityAndDistrict$streetAddress';
+  String get fullAddress => '$cityAndDistrict$streetAddress'.trim();
 
   WatermarkSnapshot copyWith({
     String? utcPlus8FormattedTime,
@@ -128,32 +128,61 @@ class WatermarkSnapshot {
   }
 }
 
-/// 時間地點浮水印與 110 簡訊報案核心引擎
+/// 時間與真實定位浮水印引擎
 class WatermarkLocationEngine {
   const WatermarkLocationEngine._();
 
-  /// 台灣標準時間時區偏移量 (UTC+8)
   static const Duration taiwanTimeZoneOffset = Duration(hours: 8);
-  /// 將任意時區之時間強制校正為台灣標準時間 (UTC+8)，輸出 YYYY/MM/DD HH:mm:ss 格式
+
+  /// 依裝置當地時區格式化現場時間 (YYYY/MM/DD HH:mm:ss)
+  static String formatLocalTimestamp(
+    DateTime rawTime, {
+    bool includeMilliseconds = false,
+  }) {
+    final DateTime local = rawTime.toLocal();
+    return _formatDateTimeParts(local, includeMilliseconds: includeMilliseconds);
+  }
+
+  /// 取得裝置目前當地時區標籤 (例如 UTC+8、UTC-5、UTC+9:30)
+  static String formatLocalTimezoneLabel(DateTime rawTime) {
+    final Duration offset = rawTime.toLocal().timeZoneOffset;
+    final int totalMinutes = offset.inMinutes;
+    final String sign = totalMinutes >= 0 ? '+' : '-';
+    final int absMin = totalMinutes.abs();
+    final int hrs = absMin ~/ 60;
+    final int mins = absMin % 60;
+    return mins == 0
+        ? 'UTC$sign$hrs'
+        : 'UTC$sign$hrs:${mins.toString().padLeft(2, '0')}';
+  }
+
+  /// 將任意時區時間格式化為台灣標準時間 (UTC+8)
   static String formatTaiwanTimestamp(
     DateTime rawTime, {
     bool includeMilliseconds = false,
   }) {
     final DateTime twTime = rawTime.toUtc().add(taiwanTimeZoneOffset);
-    final String y = twTime.year.toString().padLeft(4, '0');
-    final String m = twTime.month.toString().padLeft(2, '0');
-    final String d = twTime.day.toString().padLeft(2, '0');
-    final String hh = twTime.hour.toString().padLeft(2, '0');
-    final String mm = twTime.minute.toString().padLeft(2, '0');
-    final String ss = twTime.second.toString().padLeft(2, '0');
+    return _formatDateTimeParts(twTime, includeMilliseconds: includeMilliseconds);
+  }
+
+  static String _formatDateTimeParts(
+    DateTime t, {
+    required bool includeMilliseconds,
+  }) {
+    final String y = t.year.toString().padLeft(4, '0');
+    final String m = t.month.toString().padLeft(2, '0');
+    final String d = t.day.toString().padLeft(2, '0');
+    final String hh = t.hour.toString().padLeft(2, '0');
+    final String mm = t.minute.toString().padLeft(2, '0');
+    final String ss = t.second.toString().padLeft(2, '0');
     if (!includeMilliseconds) {
       return '$y/$m/$d $hh:$mm:$ss';
     }
-    final String ms = (twTime.millisecond ~/ 10).toString().padLeft(2, '0');
+    final String ms = (t.millisecond ~/ 10).toString().padLeft(2, '0');
     return '$y/$m/$d $hh:$mm:$ss.$ms';
   }
 
-  /// 驗證經緯度是否位於台灣本島與澎金馬轄區合理範圍 (21.5°N ~ 26.5°N, 118.0°E ~ 122.5°E)
+  /// 驗證經緯度是否位於台灣本島與澎金馬轄區合理範圍
   static bool isWithinTaiwanBounds(double latitude, double longitude) {
     if (!latitude.isFinite || !longitude.isFinite) return false;
     return latitude >= 21.5 &&
@@ -162,42 +191,49 @@ class WatermarkLocationEngine {
         longitude <= 122.5;
   }
 
-  /// 建立安全且經過邊界消毒之即時浮水印快照
+  /// 建立誠實且經過邊界消毒的浮水印快照（無真實 GPS 時嚴禁偽造假地址與假座標）
   static WatermarkSnapshot createSnapshot({
     required DateTime timestamp,
     String? cityAndDistrict,
     String? streetAddress,
-    double latitude = 25.03396,
-    double longitude = 121.56447,
-    double altitudeMeters = 12.5,
+    double latitude = double.nan,
+    double longitude = double.nan,
+    double altitudeMeters = double.nan,
     String plateOrProjectNote = '',
-    bool isTimeVerified = true,
+    bool isTimeVerified = false,
     bool isProUnlocked = false,
     bool isZh = true,
+    bool useLocalTimezone = true,
   }) {
-    final String formattedTime = formatTaiwanTimestamp(timestamp);
-    final String defaultCity = isZh ? '台北市信義區' : 'Xinyi Dist., Taipei City ';
-    final String defaultStreet = isZh ? '市府路1號 (定位更新中)' : 'No. 1, City Hall Rd.';
+    final String formattedTime = useLocalTimezone
+        ? formatLocalTimestamp(timestamp)
+        : formatTaiwanTimestamp(timestamp);
 
-    final String safeCity =
-        (cityAndDistrict == null || cityAndDistrict.trim().isEmpty)
-            ? defaultCity
-            : cityAndDistrict.trim();
-    final String safeStreet =
-        (streetAddress == null || streetAddress.trim().isEmpty)
-            ? defaultStreet
-            : streetAddress.trim();
-
-    final double safeLat = latitude.isFinite ? latitude.clamp(-90.0, 90.0) : 0.0;
+    final double safeLat =
+        latitude.isFinite ? latitude.clamp(-90.0, 90.0) : double.nan;
     final double safeLng =
-        longitude.isFinite ? longitude.clamp(-180.0, 180.0) : 0.0;
+        longitude.isFinite ? longitude.clamp(-180.0, 180.0) : double.nan;
     final double safeAlt =
-        altitudeMeters.isFinite ? altitudeMeters.clamp(-500.0, 9000.0) : 0.0;
+        altitudeMeters.isFinite ? altitudeMeters.clamp(-500.0, 9000.0) : double.nan;
+
+    final bool validCoords = safeLat.isFinite &&
+        safeLng.isFinite &&
+        !(safeLat.abs() < 0.0001 && safeLng.abs() < 0.0001);
+
+    final String cleanCity = (cityAndDistrict ?? '').trim();
+    final String cleanStreet = (streetAddress ?? '').trim();
+
+    final String resolvedCity = cleanCity;
+    final String resolvedStreet = cleanStreet.isNotEmpty
+        ? cleanStreet
+        : (validCoords
+            ? (isZh ? '已完成衛星座標定位' : 'GPS Coordinates Locked')
+            : (isZh ? '尚未取得定位（請確認系統定位權限）' : 'Location unavailable — enable GPS'));
 
     return WatermarkSnapshot(
       utcPlus8FormattedTime: formattedTime,
-      cityAndDistrict: safeCity,
-      streetAddress: safeStreet,
+      cityAndDistrict: resolvedCity,
+      streetAddress: resolvedStreet,
       latitude: safeLat,
       longitude: safeLng,
       altitudeMeters: safeAlt,
@@ -206,77 +242,34 @@ class WatermarkLocationEngine {
       showBrandBadge: !isProUnlocked,
     );
   }
-  /// 台灣各縣市警察局勤務指揮中心 110 報案簡訊專線對照表
-  static const Map<String, String> _city110SmsNumbers = <String, String>{
-    '台北市': '0911510914',
-    '臺北市': '0911510914',
-    '新北市': '0911510105',
-    '桃園市': '0917110110',
-    '台中市': '0911510915',
-    '臺中市': '0911510915',
-    '台南市': '0911510916',
-    '臺南市': '0911510916',
-    '高雄市': '0911510917',
-    '基隆市': '0911510918',
-    '新竹市': '0911510919',
-    '新竹縣': '0911510920',
-    '彰化縣': '0911510922',
-    '屏東縣': '0911510929',
-  };
 
-  /// 根據當前地址自動匹配該縣市警察局報案簡訊專線 (若未匹配則回傳全國通用 110)
-  static String resolve110SmsRecipient(String cityAndDistrict) {
-    for (final MapEntry<String, String> entry in _city110SmsNumbers.entries) {
-      if (cityAndDistrict.contains(entry.key)) {
-        return entry.value;
-      }
-    }
-    return '110';
-  }
-
-  /// 一鍵生成符合各縣市警局勤務指揮中心規範之 110 報案簡訊本文
-  static String build110SmsBody({
+  /// 生成可複製或分享的即時時間地點摘要（取代硬編碼與可能誤撥的縣市 110 號碼）
+  static String buildLocationSummaryForShare({
     required WatermarkSnapshot snapshot,
     required EmergencyIncidentType incidentType,
     required bool isZh,
   }) {
     final String rawNote = snapshot.plateOrProjectNote.trim();
-    final String safeNote = rawNote.length > 40
-        ? '${rawNote.substring(0, 40)}...'
-        : (rawNote.isEmpty ? (isZh ? '現場違規車輛' : 'N/A') : rawNote);
+    final String safeNote = rawNote.length > 48
+        ? '${rawNote.substring(0, 48)}...'
+        : (rawNote.isEmpty ? (isZh ? '未填寫備註' : 'N/A') : rawNote);
     final String gpsText = snapshot.formattedCoordinates(isZh: isZh);
+    final String addrText = snapshot.fullAddress;
 
     if (isZh) {
-      return '【110簡訊報案】\n'
+      return '【現場時間地點摘要】\n'
           '時間：${snapshot.utcPlus8FormattedTime}\n'
-          '地點：${snapshot.fullAddress}\n'
+          '地點：$addrText\n'
           '座標：$gpsText\n'
-          '車號/備註：$safeNote\n'
-          '事由：${incidentType.localizedSmsBody(isZh: true)}';
+          '編號/備註：$safeNote\n'
+          '狀況說明：${incidentType.localizedSummaryBody(isZh: true)}';
     }
 
-    return '[SMS Police Report]\n'
+    return '[Timestamped Location Summary]\n'
         'Time: ${snapshot.utcPlus8FormattedTime}\n'
-        'Addr: ${snapshot.fullAddress}\n'
+        'Address: $addrText\n'
         'GPS: $gpsText\n'
-        'Plate/Note: $safeNote\n'
-        'Issue: ${incidentType.localizedSmsBody(isZh: false)}';
-  }
-
-  /// 生成安全編碼之跨平台 sms: 啟動 URI
-  static Uri build110SmsUri({
-    required WatermarkSnapshot snapshot,
-    required EmergencyIncidentType incidentType,
-    required bool isZh,
-  }) {
-    final String recipient = resolve110SmsRecipient(snapshot.cityAndDistrict);
-    final String body = build110SmsBody(
-      snapshot: snapshot,
-      incidentType: incidentType,
-      isZh: isZh,
-    );
-    final String encodedBody =
-        Uri.encodeComponent(body).replaceAll('+', '%20');
-    return Uri.parse('sms:$recipient?body=$encodedBody');
+        'Ref/Note: $safeNote\n'
+        'Details: ${incidentType.localizedSummaryBody(isZh: false)}';
   }
 }
