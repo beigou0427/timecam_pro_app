@@ -558,6 +558,9 @@ class NativeHardwareBridge {
     }
   }
 
+  static final Map<String, Map<String, dynamic>> cachedStoreKit2Products =
+      <String, Map<String, dynamic>>{};
+
   static Future<Map<String, Map<String, dynamic>>> fetchStoreKit2Products(
     Set<String> productIds, {
     bool isTestMode = false,
@@ -584,6 +587,9 @@ class NativeHardwareBridge {
             out[id] = m;
           }
         }
+      }
+      if (out.isNotEmpty) {
+        cachedStoreKit2Products.addAll(out);
       }
       return out;
     } catch (e) {

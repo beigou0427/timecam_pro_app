@@ -99,8 +99,17 @@ class WatermarkSnapshot {
     return '$latStr° $latDir, $lngStr° $lngDir  (H: ${altStr}m)';
   }
 
-  /// 完整合併地址字串
-  String get fullAddress => '$cityAndDistrict$streetAddress'.trim();
+  /// 完整合併地址字串（英文地址自動在地區與門牌間補上逗號與空格）
+  String get fullAddress {
+    final String c = cityAndDistrict.trim();
+    final String s = streetAddress.trim();
+    if (c.isEmpty) return s;
+    if (s.isEmpty) return c;
+    final bool asciiBoundary =
+        RegExp(r'[A-Za-z0-9]$').hasMatch(c) ||
+        RegExp(r'^[A-Za-z0-9]').hasMatch(s);
+    return asciiBoundary ? '$c, $s' : '$c$s';
+  }
 
   WatermarkSnapshot copyWith({
     String? utcPlus8FormattedTime,

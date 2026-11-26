@@ -111,6 +111,7 @@ class _PaywallSheetState extends State<PaywallSheet> {
   ProPlanTier _selectedTier = ProPlanTier.annual;
   bool _showMonthlyPlan = false;
   bool _isProcessing = false;
+  bool _isLoadingProducts = false;
   Map<String, Map<String, dynamic>> _sk2Products =
       <String, Map<String, dynamic>>{};
 
@@ -130,6 +131,11 @@ class _PaywallSheetState extends State<PaywallSheet> {
   @override
   void initState() {
     super.initState();
+    _sk2Products = Map<String, Map<String, dynamic>>.from(
+      NativeHardwareBridge.cachedStoreKit2Products,
+    );
+    _isLoadingProducts =
+        NativeHardwareBridge.isLiveIosRuntime && _sk2Products.isEmpty;
     _loadStorePrices();
   }
 
@@ -139,9 +145,12 @@ class _PaywallSheetState extends State<PaywallSheet> {
         _sellableTiers.map((ProPlanTier t) => t.productId).toSet();
     final Map<String, Map<String, dynamic>> loaded =
         await NativeHardwareBridge.fetchStoreKit2Products(ids);
-    if (!mounted || loaded.isEmpty) return;
+    if (!mounted) return;
     setState(() {
-      _sk2Products = loaded;
+      if (loaded.isNotEmpty) {
+        _sk2Products = loaded;
+      }
+      _isLoadingProducts = false;
     });
   }
 
@@ -156,6 +165,9 @@ class _PaywallSheetState extends State<PaywallSheet> {
         return widget.isZh ? '$displayPrice / 月' : '$displayPrice / mo';
       }
       return displayPrice;
+    }
+    if (NativeHardwareBridge.isLiveIosRuntime && _isLoadingProducts) {
+      return '...';
     }
     return tier.localizedPrice(isZh: widget.isZh);
   }
@@ -364,9 +376,12 @@ class _PaywallSheetState extends State<PaywallSheet> {
       return;
     }
     if (status == 'canceled') {
+      messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          persist: false,
           backgroundColor: const Color(0xFF1F1F23),
           content: Text(
             widget.isZh ? '已取消購買' : 'Purchase canceled',
@@ -377,9 +392,12 @@ class _PaywallSheetState extends State<PaywallSheet> {
       return;
     }
     if (status == 'pending') {
+      messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          persist: false,
           backgroundColor: const Color(0xFF1F1F23),
           content: Text(
             widget.isZh
@@ -396,9 +414,12 @@ class _PaywallSheetState extends State<PaywallSheet> {
         (widget.isZh
             ? '購買失敗，請確認網路與 Apple ID 設定後重試'
             : 'Purchase failed. Check connection & Apple ID.');
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        persist: false,
         backgroundColor: const Color(0xFFFF453A),
         content: Text(errMsg),
       ),
@@ -412,9 +433,12 @@ class _PaywallSheetState extends State<PaywallSheet> {
 
     if (!NativeHardwareBridge.isLiveIosRuntime) {
       setState(() => _isProcessing = false);
+      messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          persist: false,
           backgroundColor: const Color(0xFF1F1F23),
           content: Text(
             widget.isZh
@@ -444,9 +468,12 @@ class _PaywallSheetState extends State<PaywallSheet> {
       return;
     }
 
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        persist: false,
         backgroundColor: const Color(0xFF1F1F23),
         content: Text(
           widget.isZh

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -249,6 +250,17 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell>
     if (keychainQuota > _usedFreeExports) {
       setState(() => _usedFreeExports = keychainQuota);
     }
+    if (NativeHardwareBridge.isLiveIosRuntime) {
+      unawaited(
+        NativeHardwareBridge.fetchStoreKit2Products(
+          const <String>{
+            'com.beigou.timecampro.annual550',
+            'com.beigou.timecampro.lifetime590',
+            'com.beigou.timecampro.monthly150',
+          },
+        ),
+      );
+    }
     await _verifyLiveStoreKitEntitlements();
   }
 
@@ -400,9 +412,13 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell>
     _persistState();
 
     if (!wasUnlocked) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          persist: false,
           backgroundColor: const Color(0xFF1F1F23),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -541,19 +557,22 @@ class _TimeCamHomeShellState extends State<TimeCamHomeShell>
               const ClipboardData(text: _supportEmail),
             );
             final String body = Uri.encodeComponent(
-              'App: TimeCam Pro 1.0.0+15\n'
+              'App: TimeCam Pro 1.0.0+16\n'
               'Mode: ${_activePersona.name}\n'
               'Pro: $_isProUnlocked\n'
               'Description / Issue:\n',
             );
             final bool opened = await NativeHardwareBridge.openExternalUrl(
-              'mailto:$_supportEmail?subject=TimeCam%20Pro%20Support%20(v1.0.0%2B15)&body=$body',
+              'mailto:$_supportEmail?subject=TimeCam%20Pro%20Support%20(v1.0.0%2B16)&body=$body',
               isTestMode: widget.isTestMode,
             );
             if (!mounted) return;
+            messenger.clearSnackBars();
             messenger.showSnackBar(
               SnackBar(
                 behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 3),
+                persist: false,
                 backgroundColor: const Color(0xFF1F1F23),
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.all(Radius.circular(12)),

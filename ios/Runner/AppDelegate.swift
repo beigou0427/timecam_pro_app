@@ -1167,13 +1167,24 @@ final class LiveCameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
         let city: String
         let street: String
         if isZh {
-          city = (pm?.administrativeArea ?? "") + (pm?.subAdministrativeArea ?? "") + (pm?.locality ?? "")
-          street = (pm?.thoroughfare ?? "") + (pm?.subThoroughfare ?? "")
-        } else {
-          city = [pm?.locality, pm?.administrativeArea]
+          var zhCity = ""
+          let rawParts = [pm?.administrativeArea, pm?.subAdministrativeArea, pm?.locality, pm?.subLocality]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-            .joined(separator: ", ")
+          for part in rawParts where !zhCity.contains(part) {
+            zhCity += part
+          }
+          city = zhCity
+          street = (pm?.thoroughfare ?? "") + (pm?.subThoroughfare ?? "")
+        } else {
+          var enParts: [String] = []
+          for raw in [pm?.subLocality, pm?.locality, pm?.administrativeArea] {
+            let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !trimmed.isEmpty && !enParts.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+              enParts.append(trimmed)
+            }
+          }
+          city = enParts.joined(separator: ", ")
           let rawStreet = [pm?.subThoroughfare, pm?.thoroughfare]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -1311,8 +1322,13 @@ final class LiveCameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
     let previousUrl = selectedVideoUrl
     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
       let ext = mediaUrl.pathExtension.isEmpty ? "mov" : mediaUrl.pathExtension
+      let fmt = DateFormatter()
+      fmt.locale = Locale(identifier: "en_US_POSIX")
+      fmt.dateFormat = "yyyyMMdd_HHmmss"
+      let stamp = fmt.string(from: Date())
+      let displayName = "TimeCamPro_Video_\(stamp).\(ext)"
       let stableUrl = URL(fileURLWithPath: NSTemporaryDirectory())
-        .appendingPathComponent("TimeCamPro_Source_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString.prefix(6)).\(ext)")
+        .appendingPathComponent("TimeCamPro_Source_\(stamp)_\(UUID().uuidString.prefix(6)).\(ext)")
       let workingUrl: URL
       if (try? FileManager.default.copyItem(at: mediaUrl, to: stableUrl)) != nil {
         try? FileManager.default.setAttributes(
@@ -1331,6 +1347,14 @@ final class LiveCameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
       let sizeBytes = Double(fileValues?.fileSize ?? (25 * 1024 * 1024))
       let sizeMB = max(0.2, sizeBytes / (1024.0 * 1024.0))
 
+      let imgGen = AVAssetImageGenerator(asset: asset)
+      imgGen.appliesPreferredTrackTransform = true
+      imgGen.maximumSize = CGSize(width: 640, height: 640)
+      var videoThumbPath: String?
+      if let cg = try? imgGen.copyCGImage(at: .zero, actualTime: nil) {
+        videoThumbPath = self?.writeProtectedThumbnail(image: UIImage(cgImage: cg), caseId: "VID_\(stamp)")
+      }
+
       let finishPicker: (Bool) -> Void = { savedToPhotos in
         DispatchQueue.main.async {
           if let oldUrl = previousUrl, oldUrl != workingUrl {
@@ -1341,8 +1365,9 @@ final class LiveCameraPlatformViewFactory: NSObject, FlutterPlatformViewFactory 
             "path": workingUrl.path,
             "sizeMB": sizeMB,
             "durationSeconds": durationSec,
-            "fileName": mediaUrl.lastPathComponent,
-            "savedToPhotos": savedToPhotos
+            "fileName": displayName,
+            "savedToPhotos": savedToPhotos,
+            "thumbnailPath": (videoThumbPath as Any?) ?? NSNull()
           ])
         }
       }

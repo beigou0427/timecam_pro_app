@@ -185,8 +185,10 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
           .clamp(0, VideoCompressorTab.sampleVideos.length - 1);
       _selectedPreset = widget.preferences.compressorPreset;
       _autoCopySummary = widget.preferences.autoCopySummary;
+      final double maxSec = _activeVideo.totalSeconds.clamp(1.0, 600.0);
+      final double minDur = maxSec < 5.0 ? maxSec : 5.0;
       _trimDurationSeconds = widget.preferences.compressorTrimSeconds
-          .clamp(5.0, _activeVideo.totalSeconds);
+          .clamp(minDur, maxSec);
     }
     if (widget.usedFreeExports != oldWidget.usedFreeExports) {
       _usedFreeExports = widget.usedFreeExports;
@@ -300,9 +302,12 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
         _applyRealVideoMap(picked);
       });
       final SampleSourceVideo v = _activeVideo;
+      messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          persist: false,
           backgroundColor: const Color(0xFF1F1F23),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -370,9 +375,12 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
             _isCompressing = false;
             _compressionProgress = 1.0;
           });
+          messenger.clearSnackBars();
           messenger.showSnackBar(
             SnackBar(
               behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+              persist: false,
               backgroundColor: const Color(0xFF1F1F23),
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -448,9 +456,12 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
       });
       final String detailSuffix =
           errDetail.isNotEmpty ? ' ($errDetail)' : '';
+      messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: isPhotoDenied ? 4 : 3),
+          persist: false,
           backgroundColor: const Color(0xFF1F1F23),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -525,9 +536,12 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
     );
 
     final String sizeStr = '${actualMB.toStringAsFixed(1)} MB';
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        persist: false,
         backgroundColor: const Color(0xFF1F1F23),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -849,7 +863,7 @@ class _VideoCompressorTabState extends State<VideoCompressorTab> {
                               : () {
                                   HapticFeedback.selectionClick();
                                   final double nextDur =
-                                      sec.toDouble().clamp(5.0, maxSec);
+                                      sec.toDouble().clamp(minTrim, maxSec);
                                   final double nextStart =
                                       (safeStart + nextDur <= maxSec)
                                           ? safeStart

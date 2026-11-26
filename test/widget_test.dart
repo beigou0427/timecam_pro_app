@@ -11,6 +11,7 @@ import 'package:timecam_pro_app/core/user_preferences_state.dart';
 import 'package:timecam_pro_app/core/video_compression_engine.dart';
 import 'package:timecam_pro_app/core/watermark_location_engine.dart';
 import 'package:timecam_pro_app/main.dart';
+import 'package:timecam_pro_app/ui/tabs/video_compressor_tab.dart';
 import 'package:timecam_pro_app/ui/widgets/export_handoff_banner.dart';
 import 'package:timecam_pro_app/ui/widgets/taiwan_plate_quick_pad.dart';
 
@@ -473,6 +474,126 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('compressor_export_cta_btn')), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    test('WatermarkSnapshot.fullAddress handles ZH vs EN boundaries cleanly', () {
+      const WatermarkSnapshot zhSnap = WatermarkSnapshot(
+        utcPlus8FormattedTime: '2026/11/26 15:31:22',
+        cityAndDistrict: '臺南市學甲區',
+        streetAddress: '中華路一段121號',
+        latitude: 23.22293,
+        longitude: 120.18667,
+        altitudeMeters: 17.2,
+        plateOrProjectNote: '',
+        isTimeVerified: true,
+        showBrandBadge: false,
+      );
+      expect(zhSnap.fullAddress, '臺南市學甲區中華路一段121號');
+
+      const WatermarkSnapshot enSnap = WatermarkSnapshot(
+        utcPlus8FormattedTime: '2026/11/26 15:31:22',
+        cityAndDistrict: 'Xuejia District, Tainan City',
+        streetAddress: 'No. 121 Zhonghua Rd',
+        latitude: 23.22293,
+        longitude: 120.18667,
+        altitudeMeters: 17.2,
+        plateOrProjectNote: '',
+        isTimeVerified: true,
+        showBrandBadge: false,
+      );
+      expect(enSnap.fullAddress, 'Xuejia District, Tainan City, No. 121 Zhonghua Rd');
+    });
+
+    testWidgets('Short <5s video stays crash-free when switching language', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1290, 2796);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const TimeCamProApp(isTestMode: true));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('20MB壓縮'));
+      await tester.pumpAndSettle();
+
+      // Switch to EN then back to 繁中 under short video & normal state
+      await tester.tap(find.byKey(const Key('appbar_lang_toggle_btn')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Direct widget test with 3s real device video updating preferences / locale
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VideoCompressorTab(
+              isZh: true,
+              isProUnlocked: true,
+              isTestMode: true,
+              onRequestPaywall: (_) {},
+              onExportCompleted: ({
+                required CompressionPlan plan,
+                required String plateNumber,
+                required String address,
+                required double actualOutputMB,
+                required String clipboardSummary,
+              }) {},
+              externalRealVideo: const <String, dynamic>{
+                'sizeMB': 6.7,
+                'durationSeconds': 3.0,
+                'fileName': 'TimeCamPro_Video_20261126_153140.MOV',
+              },
+              preferences: const UserPreferencesState(compressorTrimSeconds: 15.0),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VideoCompressorTab(
+              isZh: false,
+              isProUnlocked: true,
+              isTestMode: true,
+              onRequestPaywall: (_) {},
+              onExportCompleted: ({
+                required CompressionPlan plan,
+                required String plateNumber,
+                required String address,
+                required double actualOutputMB,
+                required String clipboardSummary,
+              }) {},
+              externalRealVideo: const <String, dynamic>{
+                'sizeMB': 6.7,
+                'durationSeconds': 3.0,
+                'fileName': 'TimeCamPro_Video_20261126_153140.MOV',
+              },
+              preferences: const UserPreferencesState(
+                preferredIsZh: false,
+                compressorTrimSeconds: 15.0,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Photo capture SnackBar with Share action sets persist=false so it auto-dismisses', (WidgetTester tester) async {
+      await tester.pumpWidget(const TimeCamProApp(isTestMode: true));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('camera_main_shutter_btn')));
+      await tester.pumpAndSettle();
+
+      final Finder snackFinder = find.byType(SnackBar);
+      expect(snackFinder, findsOneWidget);
+      final SnackBar snack = tester.widget<SnackBar>(snackFinder);
+      expect(snack.persist, isFalse);
+      expect(snack.duration.inSeconds, lessThanOrEqualTo(4));
     });
   });
 }

@@ -207,9 +207,12 @@ class ExportHandoffBanner extends StatelessWidget {
                   await Clipboard.setData(
                     ClipboardData(text: handoff.clipboardSummary),
                   );
+                  messenger.clearSnackBars();
                   messenger.showSnackBar(
                     SnackBar(
                       behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 3),
+                      persist: false,
                       backgroundColor: const Color(0xFF1F1F23),
                       content: Text(
                         isZh ? '已複製影像摘要' : 'Summary copied',

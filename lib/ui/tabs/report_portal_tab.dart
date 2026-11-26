@@ -185,9 +185,12 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
     if (!mounted) return;
 
     final bool limited = !widget.isProUnlocked && widget.cases.length > 1;
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: (exported && limited) ? 4 : 3),
+        persist: false,
         backgroundColor: const Color(0xFF1F1F23),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -253,9 +256,12 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
     );
     await Clipboard.setData(ClipboardData(text: backupJson));
     if (!mounted) return;
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        persist: false,
         backgroundColor: const Color(0xFF1F1F23),
         content: Text(
           widget.isZh
@@ -297,9 +303,12 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
 
     await Clipboard.setData(ClipboardData(text: fullStatement));
     if (!mounted) return;
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        persist: false,
         backgroundColor: const Color(0xFF1F1F23),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -329,9 +338,12 @@ class _ReportPortalTabState extends State<ReportPortalTab> {
     await Clipboard.setData(ClipboardData(text: autoCopyNote ?? url));
     await NativeHardwareBridge.openOfficialPortalSafari(url);
     if (!mounted) return;
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        persist: false,
         backgroundColor: const Color(0xFF1F1F23),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),

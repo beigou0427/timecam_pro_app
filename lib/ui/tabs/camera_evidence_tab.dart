@@ -307,9 +307,12 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab>
 
     if (messenger != null) {
       final bool isDenied = _gpsErrorCode == 'LOCATION_DENIED';
+      messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: hasCoords ? 3 : 4),
+          persist: false,
           backgroundColor: const Color(0xFF1F1F23),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -920,11 +923,15 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab>
         setState(() => _isCapturing = false);
         if (recorded == null) return;
         final bool savedRaw = recorded['savedToPhotos'] == true;
-        widget.onCaptureEvidence(snap);
+        final String? videoThumb = recorded['thumbnailPath']?.toString();
+        widget.onCaptureEvidence(snap, thumbnailPath: videoThumb);
         widget.onRecordedVideo?.call(recorded);
+        messenger.clearSnackBars();
         messenger.showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            persist: false,
             backgroundColor: const Color(0xFF1F1F23),
             content: Text(
               savedRaw
@@ -945,9 +952,12 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab>
       }
 
       widget.onCaptureEvidence(snap);
+      messenger.clearSnackBars();
       messenger.showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          persist: false,
           backgroundColor: const Color(0xFF1F1F23),
           content: Text(
             widget.isZh ? '已儲存錄影紀錄' : 'Video record saved',
@@ -1026,9 +1036,12 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab>
           errorCode = nativeRes?['errorCode']?.toString() ?? 'CAPTURE_FAILED';
           setState(() => _isCapturing = false);
           final bool isCamDenied = errorCode == 'CAMERA_PERMISSION_DENIED';
+          messenger.clearSnackBars();
           messenger.showSnackBar(
             SnackBar(
               behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: isCamDenied ? 4 : 3),
+              persist: false,
               backgroundColor: const Color(0xFF1F1F23),
               content: Text(
                 isCamDenied
@@ -1105,9 +1118,12 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab>
     final bool photoPermDenied = errorCode == 'PHOTO_PERMISSION_DENIED';
     final bool photoSaveFailed =
         !savedToPhotos && errorCode == 'PHOTO_SAVE_FAILED';
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: (savedToPhotos || photoPermDenied) ? 4 : 3),
+        persist: false,
         backgroundColor: const Color(0xFF1F1F23),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -1186,9 +1202,12 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab>
         _applyRecognizedPlate(recognized, lockAsCustomNote: false);
       }
     });
+    messenger.clearSnackBars();
     messenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        persist: false,
         backgroundColor: const Color(0xFF1F1F23),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -1438,9 +1457,12 @@ class _CameraEvidenceTabState extends State<CameraEvidenceTab>
                                   );
                                   if (!mounted) return;
                                   sheetNav.pop();
+                                  messenger.clearSnackBars();
                                   messenger.showSnackBar(
                                     SnackBar(
                                       behavior: SnackBarBehavior.floating,
+                                      duration: const Duration(seconds: 3),
+                                      persist: false,
                                       backgroundColor: const Color(0xFF1F1F23),
                                       content: Text(
                                         widget.isZh
